@@ -1,0 +1,33 @@
+{
+  "mode": "interactive",
+  "granularity": "standard",
+  "workflow": {
+    "research": false,
+    "plan_check": false,
+    "verifier": false,
+    "auto_advance": true,
+    "nyquist_validation": false,
+    "security_enforcement": false,
+    "discuss_mode": "discuss",
+    "research_before_questions": false,
+    "use_worktrees": false,
+    "test_gate_timeout": 600
+  },
+  "planning": {
+    "commit_docs": true,
+    "search_gitignored": false,
+    "sub_repos": []
+  },
+  "git": {
+    "create_tag": false
+  },
+  "parallelization": {
+    "enabled": false,
+    "plan_level": false,
+    "task_level": false,
+    "max_concurrent_agents": 1,
+    "min_plans_for_parallel": 2
+  },
+  "project_code": null,
+  "agent_skills": {}
+}
