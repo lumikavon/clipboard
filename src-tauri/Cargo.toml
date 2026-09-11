@@ -1,10 +1,10 @@
 [package]
-name = "tiez-app"
+name = "clipboard-app"
 version = "0.3.4"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
-default-run = "tiez-app"
+default-run = "clipboard-app"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

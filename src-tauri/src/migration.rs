@@ -57,7 +57,7 @@ pub fn perform_migration_v028(default_app_dir: &PathBuf) {
                     success = true;
                     let old_log = old_app_dir.join("tiez.log");
                     if old_log.exists() {
-                        let _ = std::fs::copy(&old_log, default_app_dir.join("tiez.log"));
+                        let _ = std::fs::copy(&old_log, default_app_dir.join("clipboard.log"));
                     }
                 }
             } else if old_db.exists() && new_db.exists() {

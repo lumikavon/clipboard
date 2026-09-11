@@ -6,7 +6,7 @@
 ---
 
 <div align="center">
-  <img src="docs/images/logo.png" alt="TieZ Hero Logo" width="300" />
+  <img src="docs/images/logo.png" alt="Clipboard Hero Logo" width="300" />
 
   ### **STAY FAST. STAY SYNCED.**
 
@@ -37,7 +37,7 @@
 
 ---
 
-## 为什么选择 TieZ?
+## 为什么选择 剪切板 (Clipboard)?
 
 | 极速性能 | 深度工作流 | 本地隐私 | 云端流畅 |
 | :--- | :--- | :--- | :--- |
@@ -97,7 +97,7 @@
 
 ## 交流与赞助
 
-如果 TieZ 提高了你的工作效率，欢迎赞助本项目持续演进。
+如果 剪切板 (Clipboard) 提高了你的工作效率，欢迎赞助本项目持续演进。
 
 <div align="center">
   <table style="border: none;">

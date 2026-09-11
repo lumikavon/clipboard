@@ -6,7 +6,7 @@
 ---
 
 <div align="center">
-  <img src="docs/images/logo.png" alt="TieZ Hero Logo" width="300" />
+  <img src="docs/images/logo.png" alt="Clipboard Hero Logo" width="300" />
 
   ### **STAY FAST. STAY SYNCED.**
 
@@ -37,7 +37,7 @@ Explore 4 elegant themes designed for every workspace and efficiency scenarios.
 
 ---
 
-## Why TieZ?
+## Why Clipboard?
 
 | Performance | Practicality | Privacy | Sync |
 | :--- | :--- | :--- | :--- |
@@ -97,7 +97,7 @@ Explore 4 elegant themes designed for every workspace and efficiency scenarios.
 
 ## Community & Support
 
-If TieZ makes your life easier, consider supporting the journey.
+If Clipboard makes your life easier, consider supporting the journey.
 
 <div align="center">
   <table style="border: none;">
