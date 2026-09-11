@@ -6,7 +6,6 @@ type UseSearchScrollOptions = {
   setShowSearchBox: (val: boolean) => void;
   search: string;
   showSettings: boolean;
-  showTagManager: boolean;
   appSettings: Record<string, string>;
 };
 
@@ -15,7 +14,6 @@ export const useSearchScroll = ({
   setShowSearchBox,
   search,
   showSettings,
-  showTagManager,
   appSettings
 }: UseSearchScrollOptions) => {
   const scrollTriggerRef = useRef(0);
@@ -31,7 +29,7 @@ export const useSearchScroll = ({
 
   const handleMainWheel = useCallback(
     (e: ReactWheelEvent<HTMLElement>) => {
-      if (showSettings || showTagManager) return;
+      if (showSettings) return;
 
       if (
         e.deltaY < -5 &&
@@ -64,7 +62,6 @@ export const useSearchScroll = ({
     },
     [
       showSettings,
-      showTagManager,
       showSearchBox,
       search,
       appSettings,

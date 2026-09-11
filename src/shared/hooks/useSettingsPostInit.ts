@@ -1,11 +1,8 @@
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { MutableRefObject } from "react";
-import type { AiProfile, AppCleanupPolicy } from "../../features/settings/types";
-import type { QuickPasteModifier, CloudSyncContentPrefs } from "../../features/app/types";
-import { DEFAULT_CLOUD_SYNC_CONTENT_PREFS } from "../../features/app/types";
+import type { AppCleanupPolicy } from "../../features/settings/types";
+import type { QuickPasteModifier } from "../../features/app/types";
 
-const DEFAULT_AI_KEY = import.meta.env.VITE_AI_DEFAULT_API_KEY ?? "";
 const QUICK_PASTE_MODIFIERS = new Set<QuickPasteModifier>([
   "disabled",
   "ctrl",
@@ -35,7 +32,6 @@ const normalizeQuickPasteModifier = (value?: string): QuickPasteModifier => {
 
 interface UseSettingsPostInitOptions {
   settings: Record<string, string> | null;
-  tagManagerSizeRef: MutableRefObject<{ width: number; height: number } | null>;
   setCustomBackground: (val: string) => void;
   setCustomBackgroundOpacity: (val: number) => void;
   setSurfaceOpacity: (val: number) => void;
@@ -69,31 +65,6 @@ interface UseSettingsPostInitOptions {
   setShowSearchBox: (val: boolean) => void;
   setScrollTopButtonEnabled: (val: boolean) => void;
   setArrowKeySelection: (val: boolean) => void;
-  setMqttEnabled: (val: boolean) => void;
-  setMqttServer: (val: string) => void;
-  setMqttPort: (val: string) => void;
-  setMqttUser: (val: string) => void;
-  setMqttPass: (val: string) => void;
-  setMqttTopic: (val: string) => void;
-  setMqttProtocol: (val: string) => void;
-  setMqttWsPath: (val: string) => void;
-  setMqttNotificationEnabled: (val: boolean) => void;
-  setCloudSyncEnabled: (val: boolean) => void;
-  setCloudSyncAuto: (val: boolean) => void;
-  setCloudSyncProvider: (val: "http" | "webdav") => void;
-  setCloudSyncServer: (val: string) => void;
-  setCloudSyncApiKey: (val: string) => void;
-  setCloudSyncIntervalSec: (val: string) => void;
-  setCloudSyncSnapshotIntervalMin: (val: string) => void;
-  setCloudSyncWebdavUrl: (val: string) => void;
-  setCloudSyncWebdavUsername: (val: string) => void;
-  setCloudSyncWebdavPassword: (val: string) => void;
-  setCloudSyncWebdavBasePath: (val: string) => void;
-  setCloudSyncContentPrefs: (val: CloudSyncContentPrefs) => void;
-  setFileServerAutoClose: (val: boolean) => void;
-  setFileTransferAutoOpen: (val: boolean) => void;
-  setFileTransferAutoCopy: (val: boolean) => void;
-  setFileServerPort: (val: string) => void;
   setSequentialHotkey: (val: string) => void;
   setRichPasteHotkey: (val: string) => void;
   setSearchHotkey: (val: string) => void;
@@ -102,26 +73,16 @@ interface UseSettingsPostInitOptions {
   setSoundEnabled: (val: boolean) => void;
   setPasteSoundEnabled: (val: boolean) => void;
   setSoundVolume: (val: number) => void;
-  setAiEnabled: (val: boolean) => void;
-  setAiTargetLang: (val: string) => void;
-  setAiThinkingBudget: (val: string) => void;
   setIsWindowPinned: (val: boolean) => void;
-  setAiProfiles: (val: AiProfile[]) => void;
-  setAiAssignedProfileTask: (val: string) => void;
-  setAiAssignedProfileMouthpiece: (val: string) => void;
-  setAiAssignedProfileTranslate: (val: string) => void;
   setSettingsLoaded: (val: boolean) => void;
   setClipboardItemFontSize: (val: number) => void;
-  setClipboardTagFontSize: (val: number) => void;
   setEmojiPanelEnabled: (val: boolean) => void;
-  setTagManagerEnabled: (val: boolean) => void;
   setEmojiPanelTab: (val: "emoji" | "favorites") => void;
   setEmojiFavorites: (val: string[]) => void;
 }
 
 export const useSettingsPostInit = ({
   settings,
-  tagManagerSizeRef,
   setCustomBackground,
   setCustomBackgroundOpacity,
   setSurfaceOpacity,
@@ -155,31 +116,6 @@ export const useSettingsPostInit = ({
   setShowSearchBox,
   setScrollTopButtonEnabled,
   setArrowKeySelection,
-  setMqttEnabled,
-  setMqttServer,
-  setMqttPort,
-  setMqttUser,
-  setMqttPass,
-  setMqttTopic,
-  setMqttProtocol,
-  setMqttWsPath,
-  setMqttNotificationEnabled,
-  setCloudSyncEnabled,
-  setCloudSyncAuto,
-  setCloudSyncProvider,
-  setCloudSyncServer,
-  setCloudSyncApiKey,
-  setCloudSyncIntervalSec,
-  setCloudSyncSnapshotIntervalMin,
-  setCloudSyncWebdavUrl,
-  setCloudSyncWebdavUsername,
-  setCloudSyncWebdavPassword,
-  setCloudSyncWebdavBasePath,
-  setCloudSyncContentPrefs,
-  setFileServerAutoClose,
-  setFileTransferAutoOpen,
-  setFileTransferAutoCopy,
-  setFileServerPort,
   setSequentialHotkey,
   setRichPasteHotkey,
   setSearchHotkey,
@@ -188,35 +124,15 @@ export const useSettingsPostInit = ({
   setSoundEnabled,
   setPasteSoundEnabled,
   setSoundVolume,
-  setAiEnabled,
-  setAiTargetLang,
-  setAiThinkingBudget,
   setIsWindowPinned,
-  setAiProfiles,
-  setAiAssignedProfileTask,
-  setAiAssignedProfileMouthpiece,
-  setAiAssignedProfileTranslate,
   setSettingsLoaded,
   setClipboardItemFontSize,
-  setClipboardTagFontSize,
   setEmojiPanelEnabled,
-  setTagManagerEnabled,
   setEmojiPanelTab,
   setEmojiFavorites
 }: UseSettingsPostInitOptions) => {
   useEffect(() => {
     if (!settings) return;
-
-    if (settings["app.tag_manager_size"]) {
-      try {
-        const parsed = JSON.parse(settings["app.tag_manager_size"]);
-        if (parsed && typeof parsed.width === "number" && typeof parsed.height === "number") {
-          tagManagerSizeRef.current = { width: parsed.width, height: parsed.height };
-        }
-      } catch (e) {
-        console.warn("Invalid tag manager size:", e);
-      }
-    }
 
     // Theme application is centralized in the theme effect below
     if (settings["app.custom_background"]) setCustomBackground(settings["app.custom_background"]);
@@ -233,15 +149,8 @@ export const useSettingsPostInit = ({
       const next = parseInt(settings["app.clipboard_item_font_size"]);
       if (Number.isFinite(next)) setClipboardItemFontSize(next);
     }
-    if (settings["app.clipboard_tag_font_size"]) {
-      const next = parseInt(settings["app.clipboard_tag_font_size"]);
-      if (Number.isFinite(next)) setClipboardTagFontSize(next);
-    }
     if (settings["app.emoji_panel_enabled"] !== undefined) {
       setEmojiPanelEnabled(settings["app.emoji_panel_enabled"] === "true");
-    }
-    if (settings["app.tag_manager_enabled"] !== undefined) {
-      setTagManagerEnabled(settings["app.tag_manager_enabled"] !== "false");
     }
     if (settings["app.emoji_panel_tab"] === "favorites" || settings["app.emoji_panel_tab"] === "emoji") {
       setEmojiPanelTab(settings["app.emoji_panel_tab"] as "emoji" | "favorites");
@@ -335,50 +244,6 @@ export const useSettingsPostInit = ({
     setScrollTopButtonEnabled(settings["app.show_scroll_top_button"] !== "false");
     if (settings["app.arrow_key_selection"] === "false") setArrowKeySelection(false);
 
-    setMqttEnabled(settings["mqtt_enabled"] === "true");
-    setMqttServer(settings["mqtt_server"] || "");
-
-    setMqttPort(settings["mqtt_port"] || "1883");
-    setMqttUser(settings["mqtt_username"] || "");
-    setMqttPass(settings["mqtt_password"] || "");
-    const anonId = settings["app.anon_id"] || "";
-    const shortId = anonId.split("-")[0] || "unknown";
-    setMqttTopic(settings["mqtt_topic"] || `tiez/tiez_${shortId}`);
-    setMqttProtocol(settings["mqtt_protocol"] || "mqtt://");
-    setMqttWsPath(settings["mqtt_ws_path"] || "/mqtt");
-    setMqttNotificationEnabled(settings["mqtt_notification_enabled"] !== "false");
-    setCloudSyncEnabled(settings["cloud_sync_enabled"] === "true");
-    setCloudSyncAuto(settings["cloud_sync_auto"] !== "false");
-    setCloudSyncProvider(settings["cloud_sync_provider"] === "http" ? "http" : "webdav");
-    setCloudSyncServer(settings["cloud_sync_server"] || "");
-    setCloudSyncApiKey(settings["cloud_sync_api_key"] || "");
-    setCloudSyncIntervalSec(settings["cloud_sync_interval_sec"] || "120");
-    setCloudSyncSnapshotIntervalMin(settings["cloud_sync_snapshot_interval_min"] || "720");
-    setCloudSyncWebdavUrl(settings["cloud_sync_webdav_url"] || "");
-    setCloudSyncWebdavUsername(settings["cloud_sync_webdav_username"] || "");
-    setCloudSyncWebdavPassword(settings["cloud_sync_webdav_password"] || "");
-    setCloudSyncWebdavBasePath(settings["cloud_sync_webdav_base_path"] || "tiez-sync");
-
-    try {
-      const raw = settings["cloud_sync_content_prefs"];
-      if (raw !== undefined && String(raw).trim() !== "") {
-        const parsed = JSON.parse(String(raw)) as Record<string, unknown>;
-        setCloudSyncContentPrefs({
-          text: parsed.text !== false,
-          image: parsed.image !== false,
-          file_path: parsed.file_path !== false,
-          emoji: parsed.emoji !== false
-        });
-      } else {
-        setCloudSyncContentPrefs({ ...DEFAULT_CLOUD_SYNC_CONTENT_PREFS });
-      }
-    } catch {
-      setCloudSyncContentPrefs({ ...DEFAULT_CLOUD_SYNC_CONTENT_PREFS });
-    }
-    setFileServerAutoClose(settings["file_transfer_auto_close"] === "true");
-    setFileTransferAutoOpen(settings["file_transfer_auto_open"] === "true");
-    setFileTransferAutoCopy(settings["file_transfer_auto_copy"] === "true");
-    if (settings["file_server_port"]) setFileServerPort(settings["file_server_port"]);
     if (settings["app.sequential_hotkey"]) setSequentialHotkey(settings["app.sequential_hotkey"]);
     if (settings["app.rich_paste_hotkey"]) setRichPasteHotkey(settings["app.rich_paste_hotkey"]);
     if (settings["app.search_hotkey"] !== undefined) setSearchHotkey(settings["app.search_hotkey"]);
@@ -389,85 +254,15 @@ export const useSettingsPostInit = ({
     if (settings["app.sound_volume"]) {
       setSoundVolume(parseFloat(settings["app.sound_volume"]) || 1.0);
     }
-    if (settings["ai_enabled"]) setAiEnabled(settings["ai_enabled"] === "true");
-    if (settings["ai_target_lang"]) setAiTargetLang(settings["ai_target_lang"]);
-    if (settings["ai_thinking_budget"]) setAiThinkingBudget(settings["ai_thinking_budget"]);
 
     if (settings["app.window_pinned"] === "true") {
       setIsWindowPinned(true);
       invoke("set_window_pinned", { pinned: true }).catch(console.error);
     }
 
-    // 1. DEFINE PRESETS
-    const recommended: AiProfile[] = [
-      {
-        id: "lc_flash_v1",
-        baseUrl: "https://api.longcat.chat/openai/v1",
-        apiKey: DEFAULT_AI_KEY,
-        model: "LongCat-Flash-Chat",
-        enableThinking: false
-      },
-      {
-        id: "lc_think_v1",
-        baseUrl: "https://api.longcat.chat/openai/v1",
-        apiKey: DEFAULT_AI_KEY,
-        model: "LongCat-Flash-Thinking",
-        enableThinking: true
-      },
-      {
-        id: "lc_think_2601_v1",
-        baseUrl: "https://api.longcat.chat/openai/v1",
-        apiKey: DEFAULT_AI_KEY,
-        model: "LongCat-Flash-Thinking-2601",
-        enableThinking: true
-      }
-    ];
-
-    // 2. LOAD OR INIT
-    let finalProfiles: AiProfile[] = recommended;
-    if (settings["ai_profiles"]) {
-      try {
-        const parsed = JSON.parse(settings["ai_profiles"]);
-        if (Array.isArray(parsed)) {
-          finalProfiles = parsed.filter(
-            (p): p is AiProfile =>
-              !!p &&
-              typeof p === "object" &&
-              typeof p.id === "string" &&
-              typeof p.baseUrl === "string" &&
-              typeof p.apiKey === "string" &&
-              typeof p.model === "string" &&
-              typeof p.enableThinking === "boolean"
-          );
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    } else {
-      // First time initialization
-      invoke("save_setting", {
-        key: "ai_profiles",
-        value: JSON.stringify(recommended)
-      }).catch(console.error);
-    }
-    setAiProfiles(finalProfiles);
-
-    // 3. ASSIGNMENTS
-    const getP = (m: string) =>
-      finalProfiles.find((p) => p.model === m)?.id || finalProfiles[0]?.id || "default";
-
-    setAiAssignedProfileTask(settings["ai_assigned_profile_task"] || getP("LongCat-Flash-Chat"));
-    setAiAssignedProfileMouthpiece(
-      settings["ai_assigned_profile_mouthpiece"] || getP("LongCat-Flash-Thinking-2601")
-    );
-    setAiAssignedProfileTranslate(
-      settings["ai_assigned_profile_translate"] || getP("LongCat-Flash-Chat")
-    );
-
     setSettingsLoaded(true);
   }, [
     settings,
-    tagManagerSizeRef,
     setCustomBackground,
     setCustomBackgroundOpacity,
     setSurfaceOpacity,
@@ -498,31 +293,6 @@ export const useSettingsPostInit = ({
     setShowSearchBox,
     setScrollTopButtonEnabled,
     setArrowKeySelection,
-    setMqttEnabled,
-    setMqttServer,
-    setMqttPort,
-    setMqttUser,
-    setMqttPass,
-    setMqttTopic,
-    setMqttProtocol,
-    setMqttWsPath,
-    setMqttNotificationEnabled,
-    setCloudSyncEnabled,
-    setCloudSyncAuto,
-    setCloudSyncProvider,
-    setCloudSyncServer,
-    setCloudSyncApiKey,
-    setCloudSyncIntervalSec,
-    setCloudSyncSnapshotIntervalMin,
-    setCloudSyncWebdavUrl,
-    setCloudSyncWebdavUsername,
-    setCloudSyncWebdavPassword,
-    setCloudSyncWebdavBasePath,
-    setCloudSyncContentPrefs,
-    setFileServerAutoClose,
-    setFileTransferAutoOpen,
-    setFileTransferAutoCopy,
-    setFileServerPort,
     setSequentialHotkey,
     setRichPasteHotkey,
     setSearchHotkey,
@@ -531,19 +301,10 @@ export const useSettingsPostInit = ({
     setSoundEnabled,
     setPasteSoundEnabled,
     setSoundVolume,
-    setAiEnabled,
-    setAiTargetLang,
-    setAiThinkingBudget,
     setIsWindowPinned,
-    setAiProfiles,
-    setAiAssignedProfileTask,
-    setAiAssignedProfileMouthpiece,
-    setAiAssignedProfileTranslate,
     setSettingsLoaded,
     setClipboardItemFontSize,
-    setClipboardTagFontSize,
     setEmojiPanelEnabled,
-    setTagManagerEnabled,
     setEmojiPanelTab,
     setEmojiFavorites
   ]);

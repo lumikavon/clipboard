@@ -20,22 +20,11 @@ export const useFilteredHistory = ({
         return false;
       }
 
-      let effectiveSearch = lowerSearch;
-      const isTagSearch = effectiveSearch.startsWith("tag:");
-      if (isTagSearch) {
-        effectiveSearch = effectiveSearch.slice(4);
-      }
-
-      if (!effectiveSearch) return true;
-
-      if (isTagSearch) {
-        return item.tags?.some((tag) => tag.toLowerCase().includes(effectiveSearch)) ?? false;
-      }
+      if (!lowerSearch) return true;
 
       return (
-        item.content?.toLowerCase().includes(effectiveSearch) ||
-        item.source_app?.toLowerCase().includes(effectiveSearch) ||
-        item.tags?.some((tag) => tag.toLowerCase().includes(effectiveSearch))
+        item.content?.toLowerCase().includes(lowerSearch) ||
+        item.source_app?.toLowerCase().includes(lowerSearch)
       );
     });
 

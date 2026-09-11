@@ -10,7 +10,6 @@ interface UseSettingsApplyOptions {
   compactMode: boolean;
   settingsLoaded: boolean;
   clipboardItemFontSize: number;
-  clipboardTagFontSize: number;
   surfaceOpacity: number;
   showAppBorder: boolean;
 }
@@ -22,7 +21,6 @@ export const useSettingsApply = ({
   compactMode,
   settingsLoaded,
   clipboardItemFontSize,
-  clipboardTagFontSize,
   surfaceOpacity,
   showAppBorder: _showAppBorder
 }: UseSettingsApplyOptions) => {
@@ -128,8 +126,7 @@ export const useSettingsApply = ({
     if (!settingsLoaded) return;
     const root = document.documentElement;
     root.style.setProperty("--clipboard-item-font-size", `${clipboardItemFontSize}px`);
-    root.style.setProperty("--clipboard-tag-font-size", `${clipboardTagFontSize}px`);
     const scale = Math.min(2, Math.max(0, surfaceOpacity / 50));
     root.style.setProperty("--surface-opacity-scale", scale.toString());
-  }, [clipboardItemFontSize, clipboardTagFontSize, surfaceOpacity, settingsLoaded]);
+  }, [clipboardItemFontSize, surfaceOpacity, settingsLoaded]);
 };

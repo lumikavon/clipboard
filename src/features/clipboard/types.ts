@@ -13,17 +13,9 @@ export interface ClipboardItemProps {
   windowPinned: boolean;
   isSensitiveHidden: boolean;
   isRevealed: boolean;
-  isEditingTags: boolean;
-  tagInput: string;
-  /** Tags used elsewhere in history; shown as quick-pick when editing tags */
-  tagSuggestions?: string[];
   theme: string;
   language: Locale;
   t: (key: string) => string;
-  isAIProcessing?: boolean;
-  aiEnabled?: boolean;
-  tagColors?: Record<string, string>;
-  aiOptionsOpen?: boolean;
   richTextSnapshotPreview?: boolean;
   showSourceAppIcon?: boolean;
   sensitiveMaskPrefixVisible?: number;
@@ -37,17 +29,6 @@ export interface ClipboardItemProps {
   onOpen: (e: MouseEvent) => void;
   onTogglePin: (e: MouseEvent) => void;
   onDelete: (e: MouseEvent) => void;
-  onToggleTagEditor: (e: MouseEvent) => void;
-  onTagInput: (val: string) => void;
-  onTagAdd: () => void;
-  /** Pick an existing tag from the suggestion list (typically closes editor after add) */
-  onTagPick?: (tag: string) => void;
-  /** Close tag editor without adding (e.g. Escape) */
-  onTagEditCancel?: () => void;
-  onTagDelete: (tag: string) => void;
-  onAIAction?: (type: string) => void;
-  onAIOptionsToggle?: () => void;
-  onInputSubmit?: (val: string) => void;
   dragControls?: DragControls;
   id?: string;
   disableLayout?: boolean;

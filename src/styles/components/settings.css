@@ -1239,3 +1239,18 @@ body.theme-acrylic .settings-view select.search-input option {
   color: var(--segment-active-color);
   box-shadow: var(--segment-active-shadow);
 }
+
+.settings-window-shell {
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.settings-window-content {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  min-height: 100%;
+  box-sizing: border-box;
+}

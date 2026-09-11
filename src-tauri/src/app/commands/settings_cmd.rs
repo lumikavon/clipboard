@@ -3,7 +3,7 @@ use crate::database::DbState;
 use crate::error::{AppError, AppResult};
 use crate::infrastructure::repository::settings_repo::SettingsRepository;
 use std::sync::atomic::Ordering;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 fn normalize_quick_paste_modifier(value: &str) -> &'static str {
     match value.trim().to_ascii_lowercase().as_str() {
@@ -99,6 +99,7 @@ pub fn set_deduplication(
 
 #[tauri::command]
 pub fn save_setting(
+    app_handle: AppHandle,
     db_state: State<'_, DbState>,
     settings_state: State<'_, crate::app_state::SettingsState>,
     key: String,
@@ -182,7 +183,12 @@ pub fn save_setting(
     db_state
         .settings_repo
         .set(&key, &value)
-        .map_err(AppError::from)
+        .map_err(AppError::from)?;
+
+    // Broadcast so other windows (main window / settings window) reload their settings state.
+    let _ = app_handle.emit("settings-changed", ());
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -224,29 +230,6 @@ pub fn get_settings(
     state: State<'_, DbState>,
 ) -> AppResult<std::collections::HashMap<String, String>> {
     state.settings_repo.get_all().map_err(AppError::from)
-}
-
-#[tauri::command]
-pub fn set_file_server_auto_close(
-    state: State<'_, crate::app_state::SettingsState>,
-    db_state: State<'_, DbState>,
-    enabled: bool,
-) -> AppResult<()> {
-    state
-        .file_server_auto_close
-        .store(enabled, Ordering::Relaxed);
-    db_state
-        .settings_repo
-        .set("file_transfer_auto_close", &enabled.to_string())
-        .map_err(AppError::from)
-}
-
-#[tauri::command]
-pub fn set_file_transfer_auto_open(db_state: State<'_, DbState>, enabled: bool) -> AppResult<()> {
-    db_state
-        .settings_repo
-        .set("file_transfer_auto_open", &enabled.to_string())
-        .map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -294,22 +277,6 @@ pub fn set_capture_rich_text(
     db_state
         .settings_repo
         .set("app.capture_rich_text", &enabled.to_string())
-        .map_err(AppError::from)
-}
-
-#[tauri::command]
-pub fn set_auto_copy_file(
-    state: State<'_, crate::app_state::SettingsState>,
-    db_state: State<'_, DbState>,
-    enabled: bool,
-) -> AppResult<()> {
-    state.auto_copy_file.store(enabled, Ordering::Relaxed);
-    db_state
-        .settings_repo
-        .set(
-            "file_transfer_auto_copy",
-            if enabled { "true" } else { "false" },
-        )
         .map_err(AppError::from)
 }
 
@@ -425,43 +392,6 @@ pub fn set_sound_enabled(
         .settings_repo
         .set("app.sound_enabled", &enabled.to_string())
         .map_err(AppError::from)
-}
-
-#[tauri::command]
-pub fn get_mqtt_status() -> bool {
-    crate::services::mqtt_sub::get_mqtt_status()
-}
-
-#[tauri::command]
-pub fn get_mqtt_running() -> bool {
-    crate::services::mqtt_sub::get_mqtt_running()
-}
-
-#[tauri::command]
-pub fn restart_mqtt_client(app_handle: AppHandle) {
-    crate::services::mqtt_sub::restart_mqtt_client(app_handle)
-}
-
-#[tauri::command]
-pub fn get_cloud_sync_status() -> crate::services::cloud_sync::CloudSyncStatus {
-    crate::services::cloud_sync::get_cloud_sync_status()
-}
-
-#[tauri::command]
-pub fn restart_cloud_sync_client(app_handle: AppHandle) {
-    crate::services::cloud_sync::restart_cloud_sync_client(app_handle);
-}
-
-#[tauri::command]
-pub fn request_cloud_sync(app_handle: AppHandle) {
-    crate::services::cloud_sync::request_cloud_sync(app_handle);
-}
-
-#[tauri::command]
-pub async fn cloud_sync_now(
-    app_handle: AppHandle,
-) -> AppResult<crate::services::cloud_sync::CloudSyncStatus> {
-    crate::services::cloud_sync::cloud_sync_now(app_handle).await
 }
 
 #[tauri::command]

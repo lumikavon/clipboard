@@ -39,9 +39,9 @@ Explore 4 elegant themes designed for every workspace and efficiency scenarios.
 
 ## Why Clipboard?
 
-| Performance | Practicality | Privacy | Sync |
+| Performance | Practicality | Privacy | Local First |
 | :--- | :--- | :--- | :--- |
-| **Instant Access**<br>Native listeners and Rust core ensure absolute speed. | **Power Workflows**<br>Rich text, tags, and AI-assisted actions. | **Local & Private**<br>Local-first storage with smart masking for sensitive data in previews. | **Cloud Fluent**<br>Seamless WebDAV and MQTT cross-device sync. |
+| **Instant Access**<br>Native listeners and Rust core ensure absolute speed. | **Power Workflows**<br>Rich text, pinning, sequential paste, and an emoji panel. | **Local & Private**<br>Local-first storage with smart masking for sensitive data in previews. | **Fast & Focused**<br>No accounts, no cloud, no network — just your clipboard. |
 
 ---
 
@@ -54,20 +54,19 @@ Explore 4 elegant themes designed for every workspace and efficiency scenarios.
 - **Edge Docking**: Automatically hides at the screen edge to stay out of your way.
 
 ### Management & Enhancements
-- **Tag System**: Organize your history with custom multi-color tags.
+- **Pinning & Organization**: Keep important items pinned with drag-to-reorder.
 - **Emoji Library**: Comprehensive built-in emoji management for quick access.
 - **Advanced Settings**: Granular control over cleanup rules and app behavior.
 - **Privacy Masking**: Auto-masks sensitive info like IDs and phone numbers in previews.
 
-### Networking & Transport
-- **WebDAV Sync**: Your data, your cloud. Complete cross-device history.
-- **LAN File Transfer**: Seamlessly move items between devices on the same network.
-- **Verifcation Code Sync**: Instant transfer of OTP codes to your active device.
-- **MQTT Connectivity**: Optimized for real-time synchronization between devices.
+### Focus & Performance
+- **Local-First by Design**: No accounts, no cloud, no networking — your data never leaves the machine.
+- **Lean Footprint**: AI, cloud sync and LAN transfer features were removed to keep the app fast and simple.
+- **Standalone Settings Window**: Tune everything in a dedicated settings window without leaving your workflow.
 
 ### Productivity Tools
-- **External Collaboration**: Open items in external editors with auto-sync back.
-- **Global Search**: Find anything by content, source app, or date.
+- **External Collaboration**: Open items in external editors and apply edits back to history.
+- **Global Search**: Find anything by content or source app.
 - **Sequential Paste**: Optimized workflow for high-frequency copy-paste tasks.
 
 ---

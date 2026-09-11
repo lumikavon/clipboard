@@ -18,10 +18,8 @@ import { useSettingsApply } from "./shared/hooks/useSettingsApply";
 import { useSettingsInit } from "./shared/hooks/useSettingsInit";
 import { useSettingsPostInit } from "./shared/hooks/useSettingsPostInit";
 import { useSettingsSync } from "./shared/hooks/useSettingsSync";
-import { useTagColors } from "./shared/hooks/useTagColors";
 import { useClipboardEvents } from "./shared/hooks/useClipboardEvents";
 import { useClipboardActions } from "./shared/hooks/useClipboardActions";
-import { useMqttListener } from "./shared/hooks/useMqttListener";
 import { useSoundEffects } from "./shared/hooks/useSoundEffects";
 import { useWindowPinnedListener } from "./shared/hooks/useWindowPinnedListener";
 import { useCustomBackground } from "./shared/hooks/useCustomBackground";
@@ -31,8 +29,6 @@ import { useAppActions } from "./shared/hooks/useAppActions";
 import { useNavigationSync } from "./shared/hooks/useNavigationSync";
 import { useContextMenuBlock } from "./shared/hooks/useContextMenuBlock";
 import { useSettingsPanelReset } from "./shared/hooks/useSettingsPanelReset";
-import { useTagManagerRefresh } from "./shared/hooks/useTagManagerRefresh";
-import { useAiActions } from "./shared/hooks/useAiActions";
 import { matchesHotkey } from "./shared/hooks/useHotkeyMatching";
 import { usePinnedSort } from "./shared/hooks/usePinnedSort";
 import { useFilteredHistory } from "./shared/hooks/useFilteredHistory";
@@ -48,9 +44,8 @@ import { useAutoUpdate } from "./shared/hooks/useAutoUpdate";
 import UpdateDialog from "./shared/components/UpdateDialog";
 import type { ClipboardEntry } from "./shared/types";
 import type { QuickPasteHint, VirtualClipboardListHandle } from "./features/clipboard/types";
+import { openSettingsWindow } from "./features/settings/lib/settingsWindow";
 
-/** Must match privacy blur checks in `useClipboardItemRenderer` / `ClipboardItem`. */
-const BUILTIN_SENSITIVE_TAG_NAMES = ["sensitive", "密码", "password"] as const;
 import type { QuickPasteModifier } from "./features/app/types";
 import {
   forceHideCompactPreviewWindow,
@@ -127,18 +122,12 @@ const buildQuickPasteHintsById = (
 };
 
 const App = () => {
-  type FileTransferSourceView = "clipboard" | "settings" | "tag_manager" | "emoji_panel";
-
   const appState = useAppState();
   const {
     showSettings,
     setShowSettings,
     settingsSubpage,
     setSettingsSubpage,
-    showTagManager,
-    setShowTagManager,
-    tagManagerEnabled,
-    setTagManagerEnabled,
     setCollapsedGroups,
     history,
     setHistory,
@@ -146,20 +135,11 @@ const App = () => {
     setSearch,
     isComposing,
     setIsComposing,
-    searchIsFocused,
     setSearchIsFocused,
-    showTagFilter,
-    setShowTagFilter,
-    tagInput,
-    setTagInput,
     showEmojiPanel,
     setShowEmojiPanel,
     emojiFavorites,
     setEmojiFavorites,
-    aiOptionsOpenId,
-    setAiOptionsOpenId,
-    editingTagsId,
-    setEditingTagsId,
     revealedIds,
     setRevealedIds,
     setAutoStart,
@@ -174,8 +154,6 @@ const App = () => {
     appSettings,
     setAppSettings,
     setDefaultApps,
-    chatMode,
-    setChatMode,
     setInstalledApps,
     setDataPath,
     hotkey,
@@ -237,13 +215,10 @@ const App = () => {
     setColorMode,
     showSourceAppIcon,
     setShowSourceAppIcon,
-
     compactMode,
     setCompactMode,
     clipboardItemFontSize,
     setClipboardItemFontSize,
-    clipboardTagFontSize,
-    setClipboardTagFontSize,
     emojiPanelEnabled,
     setEmojiPanelEnabled,
     emojiPanelTab,
@@ -279,64 +254,15 @@ const App = () => {
     setHasMore,
     currentOffset,
     setCurrentOffset,
-    mqttEnabled,
-    setMqttEnabled,
-    setMqttServer,
-    setMqttPort,
-    setMqttUser,
-    setMqttPass,
-    setMqttTopic,
-    setMqttProtocol,
-    setMqttWsPath,
-    mqttNotificationEnabled,
-    setMqttNotificationEnabled,
-    cloudSyncEnabled,
-    setCloudSyncEnabled,
-    setCloudSyncAuto,
-    setCloudSyncProvider,
-    setCloudSyncServer,
-    setCloudSyncApiKey,
-    setCloudSyncIntervalSec,
-    setCloudSyncSnapshotIntervalMin,
-    setCloudSyncWebdavUrl,
-    setCloudSyncWebdavUsername,
-    setCloudSyncWebdavPassword,
-    setCloudSyncWebdavBasePath,
-    setCloudSyncContentPrefs,
-    fileServerEnabled,
-    setFileServerEnabled,
-    setFileServerPort,
-    localIp,
-    setLocalIp,
-    setAvailableIps,
-    actualPort,
-    setActualPort,
-    setFileTransferPath,
-    setFileTransferAutoOpen,
-    setFileTransferAutoCopy,
-    setFileServerAutoClose,
-    fileTransferAutoOpen,
-    fileTransferAutoCopy,
-    fileServerAutoClose,
     soundEnabled,
     setSoundEnabled,
     pasteSoundEnabled,
     setPasteSoundEnabled,
     soundVolume,
     setSoundVolume,
-    aiEnabled,
-    setAiEnabled,
-    setAiTargetLang,
-    setAiThinkingBudget,
-    aiProfiles,
-    setAiProfiles,
-    setAiAssignedProfileTask,
-    setAiAssignedProfileMouthpiece,
-    setAiAssignedProfileTranslate,
-    processingAiId,
-    setProcessingAiId,
     typeFilter,
     setTypeFilter
+
   } = appState;
 
   // --- Auto Update Logic ---
@@ -353,13 +279,9 @@ const App = () => {
   // -------------------------
 
   const effectiveShowEmojiPanel = showEmojiPanel && emojiPanelEnabled;
-  const effectiveShowTagManager = showTagManager && tagManagerEnabled;
-  const [fileTransferSourceView, setFileTransferSourceView] =
-    useState<FileTransferSourceView>("clipboard");
 
   const debouncedSearch = useDebounce(search, 400);
   const searchInputRef = useInputFocus<HTMLInputElement>();
-  const tagColors = useTagColors();
   const virtualListRef = useRef<VirtualClipboardListHandle | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [quickPasteHintsById, setQuickPasteHintsById] = useState<Record<number, QuickPasteHint>>(
@@ -392,53 +314,14 @@ const App = () => {
     setShowSearchBox,
     search,
     showSettings,
-    showTagManager: effectiveShowTagManager,
     appSettings
   });
 
   const showScrollTopVisible = showScrollTop && scrollTopButtonEnabled;
 
-  const getCurrentSourceView = useCallback((): FileTransferSourceView => {
-    if (effectiveShowTagManager) return "tag_manager";
-    if (effectiveShowEmojiPanel) return "emoji_panel";
-    if (showSettings) return "settings";
-    return "clipboard";
-  }, [effectiveShowEmojiPanel, effectiveShowTagManager, showSettings]);
-
-  const restoreViewAfterChat = useCallback(
-    (sourceView: FileTransferSourceView) => {
-      setShowTagManager(sourceView === "tag_manager");
-      setShowEmojiPanel(sourceView === "emoji_panel");
-      setShowSettings(sourceView === "settings");
-    },
-    [setShowEmojiPanel, setShowSettings, setShowTagManager]
-  );
-
-  const openFileTransfer = useCallback(() => {
-    const sourceView = getCurrentSourceView();
-    setFileTransferSourceView(sourceView);
-    setShowTagManager(false);
-    setShowEmojiPanel(false);
-    setShowSettings(true);
-    setChatMode(true);
-  }, [getCurrentSourceView, setChatMode, setShowEmojiPanel, setShowSettings, setShowTagManager]);
-
-  const closeFileTransfer = useCallback(() => {
-    setChatMode(false);
-    restoreViewAfterChat(fileTransferSourceView);
-  }, [fileTransferSourceView, restoreViewAfterChat, setChatMode]);
-
   const handleHeaderBack = useCallback(() => {
-    if (chatMode) {
-      closeFileTransfer();
-      return;
-    }
     if (effectiveShowEmojiPanel) {
       setShowEmojiPanel(false);
-      return;
-    }
-    if (effectiveShowTagManager) {
-      setShowTagManager(false);
       return;
     }
     if (showSettings) {
@@ -449,25 +332,13 @@ const App = () => {
       setShowSettings(false);
     }
   }, [
-    chatMode,
-    closeFileTransfer,
     effectiveShowEmojiPanel,
-    effectiveShowTagManager,
     setShowEmojiPanel,
     setShowSettings,
     setSettingsSubpage,
-    setShowTagManager,
     settingsSubpage,
     showSettings
   ]);
-
-  const handleToggleHeaderChat = useCallback(() => {
-    if (chatMode) {
-      closeFileTransfer();
-      return;
-    }
-    openFileTransfer();
-  }, [chatMode, closeFileTransfer, openFileTransfer]);
 
   const handleListScroll = useCallback((offset: number) => {
     handleSearchScroll(offset);
@@ -493,20 +364,6 @@ const App = () => {
     () => (hotkey || '').split('+').map((part) => part.trim()).filter(Boolean),
     [hotkey]
   );
-
-  // Compute all tags when tag manager / tag filter is open, or while editing an item's tags (quick-pick list)
-  const allTags = useMemo(() => {
-    if (!effectiveShowTagManager && !showTagFilter && editingTagsId === null) return [];
-
-    const set = new Set<string>();
-    for (const tag of BUILTIN_SENSITIVE_TAG_NAMES) {
-      set.add(tag);
-    }
-    history.forEach((item) => {
-      (item.tags || []).forEach((tag) => set.add(tag));
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [history, effectiveShowTagManager, showTagFilter, editingTagsId]);
 
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
@@ -541,15 +398,7 @@ const App = () => {
 
   useSoundEffects({ soundEnabled, pasteSoundEnabled, soundVolume });
 
-  const fetchEffectiveTransferPath = useCallback(() => {
-    invoke<string>("get_active_file_transfer_path")
-      .then(setFileTransferPath)
-      .catch(console.error);
-  }, [setFileTransferPath]);
-
   const { announcements, dismissAnnouncement } = useAnnouncements();
-
-  const tagManagerSizeRef = useRef<{ width: number; height: number } | null>(null);
 
   const settings = useSettingsInit({
     setAppSettings,
@@ -562,14 +411,11 @@ const App = () => {
 
   useSettingsPostInit({
     settings,
-    tagManagerSizeRef,
     setCustomBackground,
     setCustomBackgroundOpacity,
     setSurfaceOpacity,
     setClipboardItemFontSize,
-    setClipboardTagFontSize,
     setEmojiPanelEnabled,
-    setTagManagerEnabled,
     setEmojiPanelTab,
     setEmojiFavorites,
     setPersistent,
@@ -602,31 +448,6 @@ const App = () => {
     setShowSearchBox,
     setScrollTopButtonEnabled,
     setArrowKeySelection,
-    setMqttEnabled,
-    setMqttServer,
-    setMqttPort,
-    setMqttUser,
-    setMqttPass,
-    setMqttTopic,
-    setMqttProtocol,
-    setMqttWsPath,
-    setMqttNotificationEnabled,
-    setCloudSyncEnabled,
-    setCloudSyncAuto,
-    setCloudSyncProvider,
-    setCloudSyncServer,
-    setCloudSyncApiKey,
-    setCloudSyncIntervalSec,
-    setCloudSyncSnapshotIntervalMin,
-    setCloudSyncWebdavUrl,
-    setCloudSyncWebdavUsername,
-    setCloudSyncWebdavPassword,
-    setCloudSyncWebdavBasePath,
-    setCloudSyncContentPrefs,
-    setFileServerAutoClose,
-    setFileTransferAutoOpen,
-    setFileTransferAutoCopy,
-    setFileServerPort,
     setSequentialHotkey,
     setRichPasteHotkey,
     setSearchHotkey,
@@ -635,14 +456,7 @@ const App = () => {
     setSoundEnabled,
     setPasteSoundEnabled,
     setSoundVolume,
-    setAiEnabled,
-    setAiTargetLang,
-    setAiThinkingBudget,
     setIsWindowPinned,
-    setAiProfiles,
-    setAiAssignedProfileTask,
-    setAiAssignedProfileMouthpiece,
-    setAiAssignedProfileTranslate,
     setSettingsLoaded
   });
 
@@ -651,8 +465,6 @@ const App = () => {
 
     const unlisten = listen("focus-search-input", () => {
       setShowSettings(false);
-      setShowTagManager(false);
-      setChatMode(false);
       setShowEmojiPanel(false);
       setShowSearchBox(true);
       setSearchIsFocused(true);
@@ -670,8 +482,6 @@ const App = () => {
     };
   }, [
     setShowSettings,
-    setShowTagManager,
-    setChatMode,
     setShowEmojiPanel,
     setShowSearchBox,
     setSearchIsFocused,
@@ -684,22 +494,11 @@ const App = () => {
     }
   }, [emojiPanelEnabled, showEmojiPanel, setShowEmojiPanel]);
 
-  useEffect(() => {
-    if (!tagManagerEnabled && showTagManager) {
-      setShowTagManager(false);
-    }
-  }, [tagManagerEnabled, showTagManager, setShowTagManager]);
-
   useAppBootstrap({
-    fetchEffectiveTransferPath,
     setDataPath,
     setInstalledApps,
     setAutoStart,
     setDefaultApps,
-    setFileServerEnabled,
-    setActualPort,
-    setLocalIp,
-    setAvailableIps,
     setWinClipboardDisabled
   });
 
@@ -716,7 +515,6 @@ const App = () => {
     compactMode,
     settingsLoaded,
     clipboardItemFontSize,
-    clipboardTagFontSize,
     surfaceOpacity,
     showAppBorder
   });
@@ -757,8 +555,6 @@ const App = () => {
       fetchHistory(true);
     }
   });
-
-  useMqttListener({ enabled: mqttNotificationEnabled, t });
 
   useEffect(() => {
     fetchHistory();
@@ -801,14 +597,6 @@ const App = () => {
 
   useSettingsPanelReset({ showSettings, setCollapsedGroups, setSettingsSubpage });
 
-  useTagManagerRefresh({
-    showTagManager: effectiveShowTagManager,
-    settingsLoaded,
-    persistentLimitEnabled,
-    persistentLimit,
-    fetchHistory
-  });
-
   const saveAppSetting = useCallback(async (type: string, path: string) => {
     const key = `app.${type}`;
     console.log(`[THEME DEBUG] saveAppSetting called: key=${key}, value=${path}`);
@@ -832,14 +620,7 @@ const App = () => {
   }, [setAppSettings]);
 
   const saveSetting = useCallback((key: string, val: string) => {
-    invoke("save_setting", { key, value: val })
-      .then(() => {
-        if (key === "app.emoji_favorites") {
-          return invoke("request_cloud_sync");
-        }
-        return undefined;
-      })
-      .catch(console.error);
+    invoke("save_setting", { key, value: val }).catch(console.error);
   }, []);
 
   useSettingsSync({
@@ -848,9 +629,6 @@ const App = () => {
     saveAppSetting,
     captureFiles,
     captureRichText,
-    fileTransferAutoCopy,
-    fileServerAutoClose,
-    fileTransferAutoOpen,
     persistent,
     arrowKeySelection,
     soundVolume,
@@ -888,36 +666,24 @@ const App = () => {
       pushToast
     });
 
-  useNavigationSync({ showSettings, showTagManager: effectiveShowTagManager, chatMode, showEmojiPanel: effectiveShowEmojiPanel });
+  useNavigationSync({ showSettings, showEmojiPanel: effectiveShowEmojiPanel });
 
-  const { copyToClipboard, openContent, deleteEntry, togglePin, handleUpdateTags } =
+  const { copyToClipboard, openContent, deleteEntry, togglePin } =
     useClipboardActions({
       t,
       pushToast,
       deleteAfterPaste,
       moveToTopAfterPaste,
       setSearch,
-      setHistory,
-      virtualListRef
+      setHistory
     });
 
-  const { saveMqtt, saveCloudSync, clearHistory, handleResetSettings } = useAppActions({
+  const { clearHistory, handleResetSettings } = useAppActions({
     t,
-    mqttEnabled,
-    cloudSyncEnabled,
     openConfirm,
     closeConfirm,
     pushToast,
     fetchHistory
-  });
-
-  const { handleAIAction } = useAiActions({
-    aiProfiles,
-    language,
-    pushToast,
-    setShowSettings,
-    setProcessingAiId,
-    setHistory
   });
 
   /* 
@@ -964,9 +730,6 @@ const App = () => {
     isKeyboardMode,
     setIsKeyboardMode,
     showSettings,
-    showTagManager: effectiveShowTagManager,
-    chatMode,
-    editingTagsId,
     arrowKeySelection,
     richPasteHotkey,
     searchInputRef,
@@ -981,10 +744,6 @@ const App = () => {
     isKeyboardMode,
     selectedIndex,
     isWindowPinned,
-    editingTagsId,
-    tagInput,
-    allTags,
-    tagColors,
     theme,
     language,
     t,
@@ -995,20 +754,12 @@ const App = () => {
     sensitiveMaskSuffixVisible,
     sensitiveMaskEmailDomain,
     quickPasteHintsById,
-    processingAiId,
-    aiEnabled,
-    aiOptionsOpenId,
-    setAiOptionsOpenId,
     copyToClipboard,
     setSelectedIndex,
     setRevealedIds,
     openContent,
     togglePin,
-    deleteEntry,
-    setEditingTagsId,
-    setTagInput,
-    handleUpdateTags,
-    handleAIAction
+    deleteEntry
   });
 
   const settingsPanelProps = useSettingsPanelProps({
@@ -1024,14 +775,17 @@ const App = () => {
     updateSearchHotkey,
     saveAppSetting,
     saveSetting,
-    saveMqtt,
-    saveCloudSync,
-    fetchEffectiveTransferPath,
     handleResetSettings,
     toggleGroup,
-    onOpenChat: openFileTransfer,
     state: appState
   });
+
+  const openSettings = useCallback(() => {
+    openSettingsWindow().catch((err) => {
+      console.error("Failed to open settings window, falling back to in-app settings:", err);
+      setShowSettings(true);
+    });
+  }, [setShowSettings]);
 
   return (
     <div
@@ -1040,15 +794,10 @@ const App = () => {
       <AppHeader
         t={t}
         showSettings={showSettings}
-        setShowSettings={setShowSettings}
-        showTagManager={effectiveShowTagManager}
-        setShowTagManager={setShowTagManager}
-        tagManagerEnabled={tagManagerEnabled}
+        setShowSettings={openSettings}
         showEmojiPanel={effectiveShowEmojiPanel}
         setShowEmojiPanel={setShowEmojiPanel}
         emojiPanelEnabled={emojiPanelEnabled}
-        chatMode={chatMode}
-        fileServerEnabled={fileServerEnabled}
         isWindowPinned={isWindowPinned}
         setIsWindowPinned={setIsWindowPinned}
         clearHistory={clearHistory}
@@ -1057,19 +806,12 @@ const App = () => {
         setSearch={setSearch}
         setIsComposing={setIsComposing}
         searchInputRef={searchInputRef}
-        showTagFilter={showTagFilter}
-        setShowTagFilter={setShowTagFilter}
-        allTags={allTags}
-        searchIsFocused={searchIsFocused}
         setSearchIsFocused={setSearchIsFocused}
-        setEditingTagsId={setEditingTagsId}
-        theme={theme}
         colorMode={colorMode}
         settingsTitle={showSettings && settingsSubpage === "advanced" ? t("advanced_settings") : t("settings")}
         typeFilter={typeFilter}
         setTypeFilter={setTypeFilter}
         onBack={handleHeaderBack}
-        onToggleChat={handleToggleHeaderChat}
       />
 
       <AnnouncementSystem
@@ -1078,23 +820,16 @@ const App = () => {
       />
 
       <main
-        className={`main-content${chatMode ? " file-transfer-mode" : ""}${effectiveShowTagManager ? " tag-manager-mode" : ""}`}
+        className="main-content"
         style={{ 
-          overflowY: (showSettings || effectiveShowTagManager) ? 'auto' : 'hidden',
-          padding: effectiveShowTagManager ? '0' : undefined
+          overflowY: showSettings ? 'auto' : 'hidden'
         }}
         onWheel={handleMainWheel}
       >
         <AppMainContent
           t={t}
-          theme={theme}
           showSettings={showSettings}
-          showTagManager={effectiveShowTagManager}
-          tagManagerEnabled={tagManagerEnabled}
           showEmojiPanel={effectiveShowEmojiPanel}
-          chatMode={chatMode}
-          localIp={localIp}
-          actualPort={actualPort}
           settingsPanelProps={settingsPanelProps}
           emojiFavorites={emojiFavorites}
           setEmojiFavorites={setEmojiFavorites}

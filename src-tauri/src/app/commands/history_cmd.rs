@@ -3,7 +3,6 @@ use crate::database::DbState;
 use crate::domain::models::ClipboardEntry;
 use crate::error::{AppError, AppResult};
 use crate::infrastructure::repository::clipboard_repo::ClipboardRepository;
-use crate::infrastructure::repository::tag_repo::TagRepository;
 use crate::services::clipboard::{
     build_entry_preview, derive_rich_text_content, truncate_html_for_preview,
 };
@@ -191,7 +190,6 @@ pub fn delete_clipboard_entry(
         state.repo.delete(id, Some(&data_dir))?;
     }
     let _ = app_handle.emit("clipboard-changed", ());
-    crate::services::cloud_sync::request_cloud_sync(app_handle);
     Ok(())
 }
 
@@ -209,103 +207,7 @@ pub fn clear_clipboard_history(
     let data_dir = app_data.0.lock().unwrap();
     state.repo.clear(Some(&data_dir)).map_err(AppError::from)?;
     let _ = app_handle.emit("clipboard-changed", ());
-    crate::services::cloud_sync::request_cloud_sync(app_handle);
     Ok(())
-}
-
-#[tauri::command]
-pub fn get_tag_items(state: State<'_, DbState>, tag: String) -> AppResult<Vec<ClipboardEntry>> {
-    let mut history = state
-        .tag_repo
-        .get_entries_by_tag(&tag)
-        .map_err(AppError::from)?;
-
-    for item in &mut history {
-        normalize_rich_text_item_content(item);
-
-        if (item.content_type == "text"
-            || item.content_type == "code"
-            || item.content_type == "url"
-            || item.content_type == "rich_text")
-            && item.content.chars().count() > 50000
-        {
-            item.content = format!(
-                "{}... [Content Truncated]",
-                item.content.chars().take(50000).collect::<String>()
-            );
-        }
-
-        if item.content_type == "text"
-            || item.content_type == "code"
-            || item.content_type == "url"
-            || item.content_type == "rich_text"
-        {
-            item.preview = build_entry_preview(
-                &item.content_type,
-                &item.content,
-                item.html_content.as_deref(),
-            );
-        }
-    }
-
-    Ok(history)
-}
-
-#[tauri::command]
-pub fn get_all_tags_info(
-    state: State<'_, DbState>,
-) -> AppResult<std::collections::HashMap<String, i32>> {
-    state.tag_repo.get_all_with_counts().map_err(AppError::from)
-}
-
-#[tauri::command]
-pub fn rename_tag_globally(
-    state: State<'_, DbState>,
-    session: State<'_, SessionHistory>,
-    old_name: String,
-    new_name: String,
-) -> AppResult<()> {
-    {
-        let mut session_items = session.inner().0.lock().unwrap();
-        for item in session_items.iter_mut() {
-            for tag in item.tags.iter_mut() {
-                if *tag == old_name {
-                    *tag = new_name.clone();
-                }
-            }
-            item.tags.sort();
-            item.tags.dedup();
-        }
-    }
-
-    state
-        .tag_repo
-        .rename(&old_name, &new_name)
-        .map_err(AppError::from)
-}
-
-#[tauri::command]
-pub fn delete_tag_from_all(
-    state: State<'_, DbState>,
-    session: State<'_, SessionHistory>,
-    app_data: State<'_, AppDataDir>,
-    tag_name: String,
-) -> AppResult<()> {
-    {
-        let mut session_items = session.inner().0.lock().unwrap();
-        session_items.retain(|item| !item.tags.contains(&tag_name));
-    }
-
-    let data_dir = app_data.0.lock().unwrap();
-    state
-        .tag_repo
-        .delete_globally(&tag_name, Some(&data_dir))
-        .map_err(AppError::from)
-}
-
-#[tauri::command]
-pub fn create_new_tag(state: State<'_, DbState>, tag_name: String) -> AppResult<()> {
-    state.tag_repo.create(&tag_name).map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -356,7 +258,6 @@ pub fn update_pinned_order(
         .update_pinned_order(orders)
         .map_err(AppError::from)?;
     let _ = app_handle.emit("clipboard-changed", ());
-    crate::services::cloud_sync::request_cloud_sync(app_handle);
     Ok(())
 }
 

@@ -38,31 +38,7 @@ const maskMiddleChars = (value: string, prefixVisibleCount: number, suffixVisibl
   return `${chars.slice(0, prefix).join("")}${SENSITIVE_MASK}${chars.slice(chars.length - suffix).join("")}`;
 };
 
-// Helper function to generate a consistent color from a string based on theme
-export const getTagColor = (tag: string, theme: string) => {
-  let hash = 0;
-  for (let i = 0; i < tag.length; i++) {
-    hash = tag.charCodeAt(i) + ((hash << 5) - hash);
-  }
-
-  // Use a larger prime and multiple rotations to ensure strings that are similar
-  // (like "tag1" and "tag2") produce very different hues.
-  const hue = Math.abs((hash * 137.508 + (hash >> 3)) % 360);
-
-  if (theme === "retro") {
-    // Retro: Keep mechanical saturation, but avoid overly dark chips.
-    return `hsl(${hue}, 58%, 48%)`;
-  } else {
-    // Modern: Slightly lighter to keep tag chips readable.
-    return `hsl(${hue}, 76%, 62%)`;
-  }
-};
-
-export const getTagTextColor = (backgroundColor: string) => {
-  void backgroundColor;
-  return "#ffffff";
-};
-
+// Format a timestamp as a concise relative time string.
 export const getConciseTime = (timestamp: number, language: Locale) => {
   const diff = Date.now() - timestamp;
   const seconds = Math.floor(diff / 1000);

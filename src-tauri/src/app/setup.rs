@@ -13,10 +13,8 @@ use crate::infrastructure::repository::clipboard_repo::SqliteClipboardRepository
 use crate::infrastructure::repository::settings_repo::{
     SettingsRepository, SqliteSettingsRepository,
 };
-use crate::infrastructure::repository::tag_repo::SqliteTagRepository;
 use crate::infrastructure::windows_ext::WindowExt;
 use crate::services::encryption_queue::init_encryption_queue;
-use crate::services::sensitive_align::spawn_sensitive_alignment;
 use std::ptr::null_mut;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
@@ -80,7 +78,6 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     app.manage(EncryptionQueueState(init_encryption_queue(
         app_handle.clone(),
     )));
-    spawn_sensitive_alignment(app_handle.clone());
 
     // 6. Window Initialization (Pinned/Focus)
     setup_main_window(app, &settings);
@@ -176,7 +173,6 @@ pub struct StartupSettings {
     pub capture_files: bool,
     pub capture_rich_text: bool,
     pub deduplicate: bool,
-    pub auto_copy_file: bool,
     pub silent_start: bool,
     pub delete_after_paste: bool,
     pub privacy_protection: bool,
@@ -198,7 +194,6 @@ pub struct StartupSettings {
     pub window_height: Option<u32>,
     pub main_hotkey: String,
     pub arrow_key_selection: bool,
-    pub auto_close_server: bool,
 }
 
 fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
@@ -227,11 +222,6 @@ fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
             .unwrap_or(Some("true".to_string()))
             .map(|v| v == "true")
             .unwrap_or(true),
-        auto_copy_file: repo
-            .get("file_transfer_auto_copy")
-            .unwrap_or(Some("false".to_string()))
-            .map(|v| v == "true")
-            .unwrap_or(false),
         silent_start: repo
             .get("app.silent_start")
             .unwrap_or(Some("true".to_string()))
@@ -328,11 +318,6 @@ fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
             .unwrap_or(Some("false".to_string()))
             .map(|v| v == "true")
             .unwrap_or(false),
-        auto_close_server: repo
-            .get("file_transfer_auto_close")
-            .unwrap_or(Some("false".to_string()))
-            .map(|v| v == "true")
-            .unwrap_or(false),
     }
 }
 
@@ -344,22 +329,18 @@ fn setup_state(
 ) {
     let repo = SqliteClipboardRepository::new(conn_arc.clone());
     let settings_repo = SqliteSettingsRepository::new(conn_arc.clone());
-    let tag_repo = SqliteTagRepository::new(conn_arc.clone());
     app.manage(DbState {
         conn: conn_arc,
         repo,
         settings_repo,
-        tag_repo,
     });
 
     app.manage(SettingsState {
         deduplicate: AtomicBool::new(s.deduplicate),
         persistent: AtomicBool::new(s.persistent),
-        file_server_auto_close: AtomicBool::new(s.auto_close_server),
         theme: std::sync::Mutex::new(s.theme.clone()),
         capture_files: AtomicBool::new(s.capture_files),
         capture_rich_text: AtomicBool::new(s.capture_rich_text),
-        auto_copy_file: AtomicBool::new(s.auto_copy_file),
         silent_start: AtomicBool::new(s.silent_start),
         delete_after_paste: AtomicBool::new(s.delete_after_paste),
         privacy_protection: AtomicBool::new(s.privacy_protection),
@@ -395,22 +376,6 @@ fn setup_state(
         std::collections::VecDeque::new(),
     )));
     app.manage(AppDataDir(std::sync::Mutex::new(app_dir)));
-    app.manage(crate::services::file_transfer::ChatState::default());
-    app.manage(crate::services::file_transfer::SharedFileState(
-        std::sync::Mutex::new(std::collections::HashMap::new()),
-    ));
-    app.manage(crate::services::file_transfer::ServerInfo {
-        port: std::sync::atomic::AtomicU16::new(0),
-        ip: std::sync::Mutex::new(String::new()),
-    });
-    app.manage(crate::services::file_transfer::UploadSessions::default());
-    app.manage(crate::services::file_transfer::ServerActivityState::default());
-    app.manage(crate::services::file_transfer::WsBroadcaster(
-        std::sync::Mutex::new(None),
-    ));
-    app.manage(crate::services::file_transfer::OnlineDevices(
-        std::sync::Mutex::new(std::collections::HashMap::new()),
-    ));
     app.manage(PasteQueue::default());
 }
 
@@ -613,28 +578,9 @@ fn clamp_window_rect_to_monitor(rect: WindowRect, monitor: &tauri::Monitor) -> (
 fn start_services(app: &App, s: &StartupSettings, app_handle: AppHandle) {
     crate::infrastructure::windows_api::window_tracker::start_window_tracking(app_handle.clone());
     crate::services::clipboard::start_clipboard_monitor(app_handle.clone());
-    crate::services::mqtt_sub::start_mqtt_client(app_handle.clone());
-    crate::services::cloud_sync::start_cloud_sync_client(app_handle.clone());
     start_edge_docking_monitor(app_handle.clone());
 
     let db_state = app.state::<DbState>();
-    if db_state
-        .settings_repo
-        .get("file_server_enabled")
-        .unwrap_or(Some("false".to_string()))
-        == Some("true".to_string())
-    {
-        let port = db_state
-            .settings_repo
-            .get("file_server_port")
-            .unwrap_or(None)
-            .and_then(|x| x.parse::<u16>().ok());
-
-        let h = app_handle.clone();
-        tauri::async_runtime::spawn(async move {
-            let _ = crate::services::file_transfer::toggle_file_server(h, true, port).await;
-        });
-    }
 
     // Daily app announcement ping
     init_announcement_ping(app, &db_state.settings_repo);

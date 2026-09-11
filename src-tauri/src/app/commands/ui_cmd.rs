@@ -3,7 +3,7 @@ use crate::database::DbState;
 use crate::error::{AppError, AppResult};
 use crate::infrastructure::repository::settings_repo::SettingsRepository;
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, State, Theme, WebviewWindow};
+use tauri::{AppHandle, Emitter, Manager, State, Theme, WebviewWindow};
 use tauri_plugin_notification::NotificationExt;
 
 #[derive(Debug, Serialize)]
@@ -199,5 +199,13 @@ pub fn set_theme(
     }
 
     let _ = window.emit("theme-changed", theme);
+
+    // When another window (e.g. settings) applies a theme, tell the main window
+    // to reload settings so its theme state stays in sync.
+    if window.label() != "main" {
+        if let Some(main_window) = window.get_webview_window("main") {
+            let _ = main_window.emit("settings-changed", ());
+        }
+    }
     Ok(())
 }

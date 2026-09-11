@@ -1,9 +1,8 @@
 import { useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import type { ClipboardEntry } from "../types";
-import type { VirtualClipboardListHandle } from "../../features/clipboard/types";
 
 interface UseClipboardActionsOptions {
   t: (key: string) => string;
@@ -12,7 +11,6 @@ interface UseClipboardActionsOptions {
   moveToTopAfterPaste: boolean;
   setSearch: (val: string) => void;
   setHistory: Dispatch<SetStateAction<ClipboardEntry[]>>;
-  virtualListRef: RefObject<VirtualClipboardListHandle | null>;
 }
 
 export const useClipboardActions = ({
@@ -21,8 +19,7 @@ export const useClipboardActions = ({
   deleteAfterPaste,
   moveToTopAfterPaste,
   setSearch,
-  setHistory,
-  virtualListRef
+  setHistory
 }: UseClipboardActionsOptions) => {
   const copyToClipboard = useCallback(
     async (id: number, content: string, contentType: string, pasteWithFormat = false) => {
@@ -113,32 +110,11 @@ export const useClipboardActions = ({
     [pushToast, setHistory]
   );
 
-  const handleUpdateTags = useCallback(
-    async (id: number, newTags: string[]) => {
-      try {
-        const newId = await invoke<number>("update_tags", { id, tags: newTags });
-        setHistory((prev) =>
-          prev.map((item) => (item.id === id ? { ...item, id: newId, tags: newTags } : item))
-        );
-
-        setTimeout(() => {
-          if (virtualListRef.current) {
-            virtualListRef.current.resetAfterIndex(0);
-          }
-        }, 0);
-      } catch (err) {
-        console.error("更新标签失败", err);
-      }
-    },
-    [setHistory, virtualListRef]
-  );
-
   return {
     copyToClipboard,
     openContent,
     deleteEntry,
-    togglePin,
-    handleUpdateTags
+    togglePin
   };
 };
 

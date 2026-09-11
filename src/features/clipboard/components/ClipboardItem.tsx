@@ -1,41 +1,35 @@
-import { useRef, useEffect, useLayoutEffect, useState, useMemo, memo } from "react";
+import { useRef, useEffect, useState, useMemo, memo } from "react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import type { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { currentMonitor, getCurrentWindow, PhysicalPosition, PhysicalSize } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import {
-    Pin,
-    PinOff,
-    Eye,
-    EyeOff,
-    ExternalLink,
-    Tag,
-    X,
-    FileText,
-    Image as ImageIcon,
-    Link as LinkIcon,
-    Code,
-    File,
-    Plus,
-    Video,
-    Sparkles,
-    Loader2,
-    FileArchive,
-    Music,
-    FileCode,
-    Cpu,
-    Files,
-    ImageOff,
-    FileQuestion,
-    GripVertical
+  Pin,
+  PinOff,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  X,
+  FileText,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Code,
+  File,
+  Video,
+  FileArchive,
+  Music,
+  FileCode,
+  Cpu,
+  Files,
+  ImageOff,
+  FileQuestion,
+  GripVertical
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import type { ClipboardItemProps } from "../types";
 import {
-    formatSensitivePreview,
-    getConciseTime,
-    getTagColor,
-    getTagTextColor
+  formatSensitivePreview,
+  getConciseTime
 } from "../../../shared/lib/utils";
 import HtmlContent from "../../../shared/components/HtmlContent";
 import { toTauriLocalImageSrc } from "../../../shared/lib/localImageSrc";
@@ -681,31 +675,15 @@ const ClipboardItem = ({
     isSelected,
     isSensitiveHidden,
     isRevealed,
-    isEditingTags,
-    tagInput,
-    tagSuggestions = [],
     theme,
     language,
     t,
-    isAIProcessing,
     onSelect,
     onCopy,
     onToggleReveal,
     onOpen,
     onTogglePin,
     onDelete,
-    onToggleTagEditor,
-    onTagInput,
-    onTagAdd,
-    onTagPick,
-    onTagEditCancel,
-    onTagDelete,
-    onAIAction,
-    onInputSubmit,
-    aiEnabled,
-    aiOptionsOpen,
-    onAIOptionsToggle,
-    tagColors,
     richTextSnapshotPreview = false,
     showSourceAppIcon = true,
     sensitiveMaskPrefixVisible = 3,
@@ -719,9 +697,6 @@ const ClipboardItem = ({
     disableLayout
 }: ClipboardItemProps & { compactMode?: boolean, className?: string }) => {
     const itemRef = useRef<HTMLDivElement | null>(null);
-    const tagInputRef = useRef<HTMLInputElement>(null);
-    const [localTagInput, setLocalTagInput] = useState(tagInput);
-    const [localAiOptionsOpen, setLocalAiOptionsOpen] = useState(!!aiOptionsOpen);
     const [snapshotFailed, setSnapshotFailed] = useState(false);
     const [richImageFallbackFailed, setRichImageFallbackFailed] = useState(false);
     const [sourceAppIcon, setSourceAppIcon] = useState<string | null>(() => peekSourceAppIcon(item.source_app_path) ?? null);
@@ -731,7 +706,6 @@ const ClipboardItem = ({
     );
     const singleFilePath = filePaths.length === 1 ? filePaths[0] : null;
     const [fileIcon, setFileIcon] = useState<string | null>(() => peekFileIcon(singleFilePath) ?? null);
-    const isComposing = useRef(false);
     const richSnapshotImgRef = useRef<HTMLImageElement | null>(null);
     const richSnapshotFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -747,69 +721,6 @@ const ClipboardItem = ({
             };
         })()
         : null;
-    const pickableTagSuggestions = useMemo(() => {
-        if (!isEditingTags) return [];
-        const existing = new Set(item.tags || []);
-        const q = localTagInput.trim().toLowerCase();
-        return tagSuggestions
-            .filter((tag) => !existing.has(tag))
-            .filter((tag) => !q || tag.toLowerCase().includes(q))
-            .slice(0, 14);
-    }, [isEditingTags, item.tags, localTagInput, tagSuggestions]);
-
-    const [tagSuggestIndex, setTagSuggestIndex] = useState(-1);
-    const tagSuggestListRef = useRef<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-        if (!isEditingTags) setTagSuggestIndex(-1);
-    }, [isEditingTags]);
-
-    useEffect(() => {
-        setTagSuggestIndex((prev) => {
-            if (pickableTagSuggestions.length === 0) return -1;
-            if (prev < 0) return -1;
-            return Math.min(prev, pickableTagSuggestions.length - 1);
-        });
-    }, [pickableTagSuggestions]);
-
-    useLayoutEffect(() => {
-        if (tagSuggestIndex < 0 || !tagSuggestListRef.current) return;
-        const row = tagSuggestListRef.current.children[tagSuggestIndex] as HTMLElement | undefined;
-        row?.scrollIntoView({ block: "nearest" });
-    }, [tagSuggestIndex, pickableTagSuggestions]);
-
-    useEffect(() => {
-        if (!isEditingTags || !onTagEditCancel) return;
-
-        const onDocMouseDown = (e: MouseEvent) => {
-            if (e.button !== 0) return;
-            const root = itemRef.current;
-            if (!root) return;
-            const t = e.target as HTMLElement;
-
-            if (root.contains(t)) {
-                if (t.closest(".tag-edit-anchor")) return;
-                if (t.closest(".item-tags-container .tag-chip")) return;
-                if (
-                    t.closest("button") ||
-                    t.closest("input") ||
-                    t.closest("textarea") ||
-                    t.closest('[role="button"]') ||
-                    t.closest(".drag-handle")
-                ) {
-                    return;
-                }
-            }
-
-            onTagEditCancel();
-            e.preventDefault();
-            e.stopPropagation();
-        };
-
-        document.addEventListener("mousedown", onDocMouseDown, true);
-        return () => document.removeEventListener("mousedown", onDocMouseDown, true);
-    }, [isEditingTags, onTagEditCancel]);
-
     const sensitivePreview = useMemo(
         () => formatSensitivePreview(item.content, item.content_type, {
             prefixVisible: sensitiveMaskPrefixVisible,
@@ -877,9 +788,6 @@ const ClipboardItem = ({
             : (effectiveRichTextSnapshotSrc || null);
     const useSnapshotPreviewImage = !!richTextPreviewSrc && richTextPreviewSrc === effectiveRichTextSnapshotSrc;
     const useRichImageFallback = !!richTextPreviewSrc && richTextPreviewSrc === effectiveRichImageFallbackSrc;
-    const visibleTagCount = item.tags?.length || 0;
-    const hasTagsSection = visibleTagCount > 0 || isEditingTags;
-    const overlayTagsInPreview = !compactMode && !isEditingTags && visibleTagCount > 0;
     const standaloneColorValue = useMemo(
         () => getStandaloneColorValue(item.content_type, item.content),
         [item.content, item.content_type]
@@ -1043,14 +951,8 @@ const ClipboardItem = ({
             const clipboardItemFontSizeRaw = parseInt(
                 rootStyle.getPropertyValue("--clipboard-item-font-size")
             );
-            const clipboardTagFontSizeRaw = parseInt(
-                rootStyle.getPropertyValue("--clipboard-tag-font-size")
-            );
             const clipboardItemFontSize = Number.isFinite(clipboardItemFontSizeRaw)
                 ? clipboardItemFontSizeRaw
-                : undefined;
-            const clipboardTagFontSize = Number.isFinite(clipboardTagFontSizeRaw)
-                ? clipboardTagFontSizeRaw
                 : undefined;
             const colorMode = document.documentElement.classList.contains("dark-mode") ? "dark" : "light";
 
@@ -1079,8 +981,7 @@ const ClipboardItem = ({
                 theme,
                 colorMode,
                 richTextSnapshotPreview,
-                clipboardItemFontSize,
-                clipboardTagFontSize
+                clipboardItemFontSize
             });
             compactPreviewLog("emit compact-preview-update done");
             if (compactPreviewPendingTimer) {
@@ -1161,14 +1062,6 @@ const ClipboardItem = ({
 
     // Sync local state when prop changes (e.g. when editor opens)
     useEffect(() => {
-        setLocalTagInput(tagInput);
-    }, [tagInput]);
-
-    useEffect(() => {
-        setLocalAiOptionsOpen(!!aiOptionsOpen);
-    }, [aiOptionsOpen]);
-
-    useEffect(() => {
         setSnapshotFailed(false);
         setRichImageFallbackFailed(false);
     }, [item.id, item.html_content, richTextSnapshotPreview, compactMode]);
@@ -1202,17 +1095,6 @@ const ClipboardItem = ({
             }
         };
     }, [useSnapshotPreviewImage, effectiveRichTextSnapshotSrc, item.id]);
-
-    const showAIOptions = localAiOptionsOpen;
-    const inlineAiVariants = {
-        open: { opacity: 1, height: "auto", marginTop: 8, marginBottom: 8 },
-        collapsed: { opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }
-    };
-    useEffect(() => {
-        if (isEditingTags && tagInputRef.current) {
-            tagInputRef.current.focus();
-        }
-    }, [isEditingTags]);
 
     useEffect(() => {
         if (!compactPreviewEnabled) {
@@ -1296,200 +1178,6 @@ const ClipboardItem = ({
         );
     };
 
-    const renderTagsContainer = (overlay = false) => (
-        <div
-            className={`item-tags-container${overlay ? ' overlay' : ''}${isEditingTags ? ' tag-edit-active' : ''}`}
-            style={{
-                marginTop: overlay ? '0' : '2px',
-                display: 'flex',
-                flexWrap: 'wrap',
-                justifyContent: 'flex-end',
-                gap: '4px',
-                paddingTop: '0'
-            }}
-        >
-            {item.tags?.map((tag) => {
-                const tagBackground = tagColors?.[tag] || getTagColor(tag, theme);
-                const tagTextColor = getTagTextColor(tagBackground);
-                return (
-                    <span
-                        key={tag}
-                        className="tag-chip"
-                        style={{
-                            background: tagBackground,
-                            color: tagTextColor,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                        }}
-                    >
-                        {tag}
-                        {isEditingTags && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onTagDelete(tag);
-                                }}
-                                style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', opacity: 0.72, cursor: 'pointer', display: 'flex' }}
-                            >
-                                <X size={8} />
-                            </button>
-                        )}
-                    </span>
-                );
-            })}
-
-            {isEditingTags && (
-                <div className="tag-edit-anchor">
-                    <div className="tag-edit-input-row">
-                        <input
-                            ref={tagInputRef}
-                            type="text"
-                            value={localTagInput}
-                            onCompositionStart={() => {
-                                isComposing.current = true;
-                            }}
-                            onCompositionEnd={(e) => {
-                                isComposing.current = false;
-                                const val = (e.target as HTMLInputElement).value;
-                                setLocalTagInput(val);
-                                onTagInput(val);
-                            }}
-                            onMouseDown={() => {
-                                invoke('activate_window_focus').catch(console.error);
-                            }}
-                            onFocus={() => {
-                                invoke('activate_window_focus').catch(console.error);
-                            }}
-                            onChange={(e) => {
-                                const val = e.target.value;
-                                setLocalTagInput(val);
-                                if (!isComposing.current) {
-                                    onTagInput(val);
-                                }
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Escape') {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    onTagEditCancel?.();
-                                    return;
-                                }
-                                const suggestionCount = pickableTagSuggestions.length;
-                                if (e.key === 'ArrowDown' && suggestionCount > 0 && onTagPick) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setTagSuggestIndex((prev) =>
-                                        prev < 0 ? 0 : Math.min(prev + 1, suggestionCount - 1)
-                                    );
-                                    return;
-                                }
-                                if (e.key === 'ArrowUp' && suggestionCount > 0 && onTagPick) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setTagSuggestIndex((prev) => (prev <= 0 ? -1 : prev - 1));
-                                    return;
-                                }
-                                if (e.key === 'Enter' && !isComposing.current) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    if (
-                                        onTagPick &&
-                                        tagSuggestIndex >= 0 &&
-                                        tagSuggestIndex < suggestionCount
-                                    ) {
-                                        const picked = pickableTagSuggestions[tagSuggestIndex];
-                                        onTagPick(picked);
-                                        setLocalTagInput('');
-                                        setTagSuggestIndex(-1);
-                                    } else {
-                                        onTagAdd();
-                                    }
-                                }
-                            }}
-                            className="tag-input"
-                            aria-autocomplete="list"
-                            aria-controls={
-                                pickableTagSuggestions.length > 0 && onTagPick
-                                    ? `tag-suggest-list-${item.id}`
-                                    : undefined
-                            }
-                            aria-activedescendant={
-                                tagSuggestIndex >= 0 && pickableTagSuggestions.length > 0 && onTagPick
-                                    ? `tag-suggest-opt-${item.id}-${tagSuggestIndex}`
-                                    : undefined
-                            }
-                            placeholder={t('enter_tag_name')}
-                            style={{
-                                background: 'var(--bg-input)',
-                                border: 'none',
-                                borderRadius: '0',
-                                padding: '2px 6px',
-                                fontSize: '10px',
-                                color: 'var(--text-primary)',
-                                outline: 'none'
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onTagAdd();
-                            }}
-                            className="btn-icon"
-                            style={{ padding: '2px', height: '16px', width: '16px' }}
-                        >
-                            <Plus size={10} />
-                        </button>
-                    </div>
-                    {pickableTagSuggestions.length > 0 && onTagPick && (
-                        <div
-                            ref={tagSuggestListRef}
-                            id={`tag-suggest-list-${item.id}`}
-                            className="tag-edit-suggestions-popover hide-scrollbar"
-                            role="listbox"
-                            aria-label={t('find_tags')}
-                            onMouseDown={(e) => e.stopPropagation()}
-                        >
-                            {pickableTagSuggestions.map((sTag, sIdx) => {
-                                const bg = tagColors?.[sTag] || getTagColor(sTag, theme);
-                                const fg = getTagTextColor(bg);
-                                return (
-                                    <button
-                                        key={sTag}
-                                        type="button"
-                                        role="option"
-                                        id={`tag-suggest-opt-${item.id}-${sIdx}`}
-                                        aria-selected={tagSuggestIndex === sIdx}
-                                        className={`tag-suggest-item${tagSuggestIndex === sIdx ? ' tag-suggest-item--active' : ''}`}
-                                        onMouseEnter={() => setTagSuggestIndex(sIdx)}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onTagPick(sTag);
-                                            setLocalTagInput('');
-                                            setTagSuggestIndex(-1);
-                                        }}
-                                    >
-                                        <span
-                                            className="tag-suggest-pill"
-                                            style={{
-                                                background: bg,
-                                                color: fg
-                                            }}
-                                        >
-                                            {sTag}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-
     return (
         <motion.div
             ref={itemRef}
@@ -1505,28 +1193,15 @@ const ClipboardItem = ({
                 const target = e.target as HTMLElement;
                 if (e.button !== 0) return;
 
-                if (isEditingTags) {
-                    if (target.closest(".tag-edit-anchor")) return;
-                    if (target.closest(".item-tags-container .tag-chip")) return;
-                    if (target.closest('button, input, textarea, [role="button"], .drag-handle')) {
-                        return;
-                    }
-                    if (target.closest('a')) return;
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onTagEditCancel?.();
-                    return;
-                }
-
                 if (target.closest('button, input, textarea, [role="button"], .drag-handle')) {
                     return;
                 }
                 if (target.closest('a')) {
                     return;
                 }
-                // e.preventDefault() stops macOS from transferring key-window focus to TieZ
+                // e.preventDefault() stops macOS from transferring key-window focus to Clipboard
                 // when the user clicks on a clipboard item, including pinned mode.
-                // Without this, the first click activates TieZ and the original input
+                // Without this, the first click activates Clipboard and the original input
                 // target loses focus before we dispatch the paste keystroke.
                 e.preventDefault();
                 void hideCompactPreview();
@@ -1534,7 +1209,6 @@ const ClipboardItem = ({
                 onSelect();
             }}
             onClick={(e) => {
-                if (isEditingTags) return;
                 const target = e.target as HTMLElement;
                 if (target.closest('button') || target.closest('input') || target.closest('textarea')) {
                     return;
@@ -1547,13 +1221,6 @@ const ClipboardItem = ({
             }}
             onContextMenu={(e) => {
                 const target = e.target as HTMLElement;
-                if (isEditingTags) {
-                    if (target.closest(".tag-edit-anchor")) return;
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onTagEditCancel?.();
-                    return;
-                }
                 if (target.closest('button') || target.closest('input') || target.closest('textarea')) {
                     return;
                 }
@@ -1569,8 +1236,6 @@ const ClipboardItem = ({
             }}
             onMouseEnter={(e) => {
                 if (!compactPreviewEnabled) return;
-                // Don't show preview if AI options are open to avoid interference
-                if (showAIOptions) return;
                 compactPreviewLog("mouseenter schedule preview", { itemId: item.id });
                 const requestId = hoverRequestIdRef.current + 1;
                 hoverRequestIdRef.current = requestId;
@@ -1588,8 +1253,6 @@ const ClipboardItem = ({
                 // Set a delay to show
                 hoverTimerRef.current = setTimeout(() => {
                     hoverTimerRef.current = null;
-                    // Double-check AI options are still closed before showing
-                    if (showAIOptions) return;
                     if (!target.isConnected) return;
                     if (!isHoverPreviewRequestCurrent(requestId)) return;
                     const anchor = hoverAnchorRef.current;
@@ -1664,32 +1327,6 @@ const ClipboardItem = ({
                         >
                             {item.is_pinned ? <PinOff size={12} /> : <Pin size={12} />}
                         </button>
-                        <button
-                            className={`btn-icon ${item.tags && item.tags.length > 0 ? "active" : ""}`}
-                            onClick={onToggleTagEditor}
-                            title="Tags"
-                        >
-                            <Tag size={12} />
-                        </button>
-                        {(item.content_type === 'text' || item.content_type === 'rich_text') && aiEnabled && (
-                            <button
-                                className={`btn-icon ai-btn ${isAIProcessing || showAIOptions ? 'active' : ''}`}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!isAIProcessing) {
-                                        // Close preview window when opening AI options
-                                        if (!showAIOptions) {
-                                            hideCompactPreview();
-                                        }
-                                        setLocalAiOptionsOpen(prev => !prev);
-                                        onAIOptionsToggle?.();
-                                    }
-                                }}
-                                title={t('ai_assistant')}
-                            >
-                                {isAIProcessing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                            </button>
-                        )}
                         <button className="btn-icon" onClick={onDelete} title={t('delete')}>
                             <X size={12} />
                         </button>
@@ -1715,7 +1352,7 @@ const ClipboardItem = ({
                     </div>
                 )
             }
-            <div className={`content-preview-shell${overlayTagsInPreview ? ' has-overlay-tags' : ''}`}>
+            <div className="content-preview-shell">
                 <div className={`content-preview ${item.content_type === 'rich_text' ? 'rich-text' : ''} ${item.content_type === 'file' ? 'file-preview' : ''} ${isSensitiveHidden ? 'sensitive-blur' : ''}`}>
                 {item.content_type === "image" ? (
                     <div style={{ position: 'relative' }}>
@@ -1774,36 +1411,6 @@ const ClipboardItem = ({
                     </div>
                 ) : item.content_type === "file" ? (
                     renderFilePreview()
-                ) : isAIProcessing ? (
-                    <div className="ai-skeleton-wrapper">
-                        <div className="ai-skeleton-line" style={{ width: '90%' }}></div>
-                        <div className="ai-skeleton-line" style={{ width: '75%' }}></div>
-                        <div className="ai-skeleton-line" style={{ width: '85%' }}></div>
-                    </div>
-                ) : item.isInputting ? (
-                    <div className="ai-input-wrapper">
-                        <input
-                            autoFocus
-                            className="search-input"
-                            onMouseDown={() => invoke('activate_window_focus').catch(console.error)}
-                            onFocus={() => invoke('activate_window_focus').catch(console.error)}
-                            style={{ width: '100%', fontSize: '12px', padding: '8px', border: '1px solid var(--accent-color)' }}
-                            placeholder={item.content}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    const val = e.currentTarget.value.trim();
-                                    if (onInputSubmit) {
-                                        onInputSubmit(val);
-                                    }
-                                }
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                        <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '4px' }}>
-                            {language === 'zh' ? '输入补充信息后按回车提交' : 'Press Enter to submit supplementary info'}
-                        </div>
-                    </div>
                 ) : item.content_type === "rich_text" && item.html_content && !isSensitiveHidden ? (
                     richTextPreviewSrc ? (
                         <img
@@ -1892,87 +1499,8 @@ const ClipboardItem = ({
                         )
                         : item.preview
                 )}
-                {overlayTagsInPreview && renderTagsContainer(true)}
                 </div>
             </div>
-
-            {/* AI Options - Compact Mode: Dropdown Panel, Normal Mode: Inline */}
-            <AnimatePresence>
-                {showAIOptions && (
-                    <motion.div
-                        className={compactMode ? "ai-options-dropdown" : ""}
-                        initial={compactMode ? { opacity: 0, y: -10 } : "collapsed"}
-                        animate={compactMode ? { opacity: 1, y: 0 } : "open"}
-                        exit={compactMode ? { opacity: 0, y: -10 } : "collapsed"}
-                        variants={compactMode ? undefined : inlineAiVariants}
-                        transition={compactMode ? { duration: 0.16 } : { duration: 0.18 }}
-                        style={compactMode ? {
-                            position: 'absolute',
-                            top: '100%',
-                            right: '4px',
-                            zIndex: 100000,
-                            marginTop: '4px',
-                            background: 'var(--bg-element)',
-                            border: '2px solid var(--border-dark)',
-                            borderRadius: '4px',
-                            boxShadow: '4px 4px 0 0 var(--shadow-color)',
-                            padding: '6px',
-                            minWidth: '140px',
-                            maxHeight: '200px',
-                            overflowY: 'auto'
-                        } : { overflow: 'hidden' }}
-                    >
-                        <div style={compactMode ? {
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px'
-                        } : {
-                            padding: '8px 10px',
-                            background: 'rgba(72, 123, 219, 0.05)',
-                            border: '1.5px dashed var(--accent-color)',
-                            borderRadius: '4px',
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: '6px',
-                            alignItems: 'center'
-                        }}>
-                            {['task', 'mouthpiece', 'translate'].map(actionType => (
-                                <button
-                                    key={actionType}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onAIAction?.(actionType);
-                                        onAIOptionsToggle?.();
-                                    }}
-                                    className="btn-icon"
-                                    style={compactMode ? {
-                                        width: '100%',
-                                        fontSize: '11px',
-                                        height: '32px',
-                                        boxShadow: '2px 2px 0 0 var(--shadow-color)',
-                                        textTransform: 'none',
-                                        justifyContent: 'flex-start',
-                                        paddingLeft: '10px'
-                                    } : {
-                                        flex: 1,
-                                        minWidth: '90px',
-                                        fontSize: '11px',
-                                        height: '32px',
-                                        padding: '0 12px',
-                                        boxShadow: '2px 2px 0 0 var(--shadow-color)',
-                                        textTransform: 'none',
-                                        whiteSpace: 'nowrap'
-                                    }}
-                                >
-                                    {t(`ai_${actionType}`)}
-                                </button>
-                            ))}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {!overlayTagsInPreview && hasTagsSection && renderTagsContainer()}
         </motion.div >
     );
 };
@@ -1992,17 +1520,11 @@ export default memo(ClipboardItem, (prevProps, nextProps) => {
         prevProps.item.file_preview_exists === nextProps.item.file_preview_exists &&
         prevProps.item.tags === nextProps.item.tags &&
         prevProps.isRevealed === nextProps.isRevealed &&
-        prevProps.isEditingTags === nextProps.isEditingTags &&
-        prevProps.isAIProcessing === nextProps.isAIProcessing &&
-        prevProps.aiOptionsOpen === nextProps.aiOptionsOpen &&
-        prevProps.aiEnabled === nextProps.aiEnabled &&
         prevProps.richTextSnapshotPreview === nextProps.richTextSnapshotPreview &&
         prevProps.showSourceAppIcon === nextProps.showSourceAppIcon &&
         prevProps.quickPasteHint?.slot === nextProps.quickPasteHint?.slot &&
         prevProps.quickPasteHint?.combo === nextProps.quickPasteHint?.combo &&
         prevProps.compactMode === nextProps.compactMode &&
         prevProps.theme === nextProps.theme &&
-        prevProps.language === nextProps.language &&
-        prevProps.tagInput === nextProps.tagInput &&
-        (prevProps.tagSuggestions ?? []).join('\u0000') === (nextProps.tagSuggestions ?? []).join('\u0000');
+        prevProps.language === nextProps.language;
 });

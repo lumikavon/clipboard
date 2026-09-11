@@ -70,7 +70,7 @@ body:
     attributes:
       label: Environment details
       description: OS version, device type, related settings, or permissions.
-      placeholder: "Windows 11 24H2, admin mode on, MQTT enabled..."
+      placeholder: "Windows 11 24H2, admin mode on..."
 
   - type: textarea
     id: logs

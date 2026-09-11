@@ -47,13 +47,11 @@ body:
       options:
         - Clipboard capture
         - Search and history
-        - Tags and organization
+        - Pinning and organization
         - Privacy and encryption
-        - MQTT sync
-        - WebDAV sync
-        - File transfer
-        - AI features
+        - Hotkeys and paste workflow
         - UI and themes
+        - Settings
         - Other
 
   - type: checkboxes

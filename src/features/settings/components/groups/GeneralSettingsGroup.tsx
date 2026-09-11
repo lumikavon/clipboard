@@ -36,8 +36,6 @@ interface GeneralSettingsGroupProps {
     setScrollTopButtonEnabled: (val: boolean) => void;
     emojiPanelEnabled: boolean;
     setEmojiPanelEnabled: (val: boolean) => void;
-    tagManagerEnabled: boolean;
-    setTagManagerEnabled: (val: boolean) => void;
     arrowKeySelection: boolean;
     setArrowKeySelection: (val: boolean) => void;
     soundVolume: number;
@@ -70,8 +68,6 @@ const GeneralSettingsGroup = ({
     setScrollTopButtonEnabled,
     emojiPanelEnabled,
     setEmojiPanelEnabled,
-    tagManagerEnabled,
-    setTagManagerEnabled,
     arrowKeySelection,
     setArrowKeySelection,
     soundVolume,
@@ -306,26 +302,6 @@ const GeneralSettingsGroup = ({
                                 const enabled = e.target.checked;
                                 setEmojiPanelEnabled(enabled);
                                 saveAppSetting('emoji_panel_enabled', String(enabled));
-                            }}
-                        />
-                        <div className="toggle"><div className="left" /><div className="right" /></div>
-                    </label>
-                </div>
-                <div className="setting-item">
-                    <LabelWithHint
-                        label={t('tag_manager_enabled') || '标签管理页开关'}
-                        hint={t('tag_manager_enabled_hint') || '关闭后隐藏标签管理入口'}
-                        hintKey="tag_manager_enabled"
-                    />
-                    <label className="switch">
-                        <input
-                            className="cb"
-                            type="checkbox"
-                            checked={tagManagerEnabled}
-                            onChange={(e) => {
-                                const enabled = e.target.checked;
-                                setTagManagerEnabled(enabled);
-                                saveAppSetting('tag_manager_enabled', String(enabled));
                             }}
                         />
                         <div className="toggle"><div className="left" /><div className="right" /></div>

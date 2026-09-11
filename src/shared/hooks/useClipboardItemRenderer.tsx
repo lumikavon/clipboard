@@ -1,6 +1,4 @@
 import { useCallback } from "react";
-
-const EMPTY_TAG_SUGGESTIONS: string[] = [];
 import type { Dispatch, SetStateAction, MouseEvent, ReactNode } from "react";
 import type { DragControls } from "framer-motion";
 import ClipboardItem from "../../features/clipboard/components/ClipboardItem";
@@ -14,10 +12,6 @@ interface UseClipboardItemRendererOptions {
   isKeyboardMode: boolean;
   selectedIndex: number;
   isWindowPinned: boolean;
-  editingTagsId: number | null;
-  tagInput: string;
-  allTags: string[];
-  tagColors: Record<string, string>;
   theme: string;
   language: Locale;
   t: (key: string) => string;
@@ -28,10 +22,6 @@ interface UseClipboardItemRendererOptions {
   sensitiveMaskSuffixVisible: number;
   sensitiveMaskEmailDomain: boolean;
   quickPasteHintsById: Record<number, QuickPasteHint>;
-  processingAiId: number | null;
-  aiEnabled: boolean;
-  aiOptionsOpenId: number | null;
-  setAiOptionsOpenId: Dispatch<SetStateAction<number | null>>;
   copyToClipboard: (
     id: number,
     content: string,
@@ -45,10 +35,6 @@ interface UseClipboardItemRendererOptions {
   openContent: (item: ClipboardEntry) => void;
   togglePin: (event: MouseEvent, id: number, isPinned: boolean) => void;
   deleteEntry: (event: MouseEvent, id: number) => void;
-  setEditingTagsId: Dispatch<SetStateAction<number | null>>;
-  setTagInput: Dispatch<SetStateAction<string>>;
-  handleUpdateTags: (id: number, tags: string[]) => void;
-  handleAIAction: (id: number, content: string, actionType: string) => void;
 }
 
 type RenderItemContent = (
@@ -64,10 +50,6 @@ export const useClipboardItemRenderer = ({
   isKeyboardMode,
   selectedIndex,
   isWindowPinned,
-  editingTagsId,
-  tagInput,
-  allTags,
-  tagColors,
   theme,
   language,
   t,
@@ -78,20 +60,12 @@ export const useClipboardItemRenderer = ({
   sensitiveMaskSuffixVisible,
   sensitiveMaskEmailDomain,
   quickPasteHintsById,
-  processingAiId,
-  aiEnabled,
-  aiOptionsOpenId,
-  setAiOptionsOpenId,
   copyToClipboard,
   setSelectedIndex,
   setRevealedIds,
   openContent,
   togglePin,
-  deleteEntry,
-  setEditingTagsId,
-  setTagInput,
-  handleUpdateTags,
-  handleAIAction
+  deleteEntry
 }: UseClipboardItemRendererOptions): { renderItemContent: RenderItemContent } => {
   const renderItemContent = useCallback(
     (item: ClipboardEntry, index: number, dragControls?: DragControls, disableLayout?: boolean) => {
@@ -101,7 +75,6 @@ export const useClipboardItemRenderer = ({
           item.tags?.includes("密码") ||
           item.tags?.includes("password")) &&
         !revealedIds.has(item.id);
-      const isEditingTags = editingTagsId === item.id;
 
       return (
         <ClipboardItem
@@ -112,10 +85,6 @@ export const useClipboardItemRenderer = ({
           windowPinned={isWindowPinned}
           isSensitiveHidden={!!isSensitiveHidden}
           isRevealed={revealedIds.has(item.id)}
-          isEditingTags={isEditingTags}
-          tagInput={isEditingTags ? tagInput : ""}
-          tagSuggestions={isEditingTags ? allTags : EMPTY_TAG_SUGGESTIONS}
-          tagColors={tagColors}
           theme={theme}
           language={language}
           t={t}
@@ -145,52 +114,6 @@ export const useClipboardItemRenderer = ({
           }}
           onTogglePin={(e) => togglePin(e, item.id, item.is_pinned)}
           onDelete={(e) => deleteEntry(e, item.id)}
-          onToggleTagEditor={(e) => {
-            e.stopPropagation();
-            if (editingTagsId === item.id) {
-              setEditingTagsId(null);
-            } else {
-              setEditingTagsId(item.id);
-              setTagInput("");
-            }
-          }}
-          onTagInput={setTagInput}
-          onTagAdd={() => {
-            const newTag = tagInput.trim();
-            if (newTag && !item.tags?.includes(newTag)) {
-              handleUpdateTags(item.id, [...(item.tags || []), newTag]);
-            }
-            setTagInput("");
-            setEditingTagsId(null);
-          }}
-          onTagPick={(picked) => {
-            const next = picked.trim();
-            if (!next || item.tags?.includes(next)) return;
-            handleUpdateTags(item.id, [...(item.tags || []), next]);
-            setTagInput("");
-            setEditingTagsId(null);
-          }}
-          onTagEditCancel={() => {
-            setTagInput("");
-            setEditingTagsId(null);
-          }}
-          onTagDelete={(tag) => {
-            handleUpdateTags(item.id, item.tags ? item.tags.filter((t) => t !== tag) : []);
-          }}
-          isAIProcessing={processingAiId === item.id}
-          aiEnabled={aiEnabled}
-          aiOptionsOpen={aiOptionsOpenId === item.id}
-          onAIOptionsToggle={() =>
-            setAiOptionsOpenId((prev) => (prev === item.id ? null : item.id))
-          }
-          onAIAction={(actionType) => handleAIAction(item.id, item.content, actionType)}
-          onInputSubmit={(input) =>
-            handleAIAction(
-              item.id,
-              `这是我之前的原始意图：\n"${item.content}"\n\n这是我补充的信息：\n"${input}"\n\n请结合以上信息完成任务。`,
-              "task"
-            )
-          }
           dragControls={dragControls}
           disableLayout={disableLayout}
         />
@@ -202,10 +125,6 @@ export const useClipboardItemRenderer = ({
       isKeyboardMode,
       selectedIndex,
       isWindowPinned,
-      editingTagsId,
-      tagInput,
-      allTags,
-      tagColors,
       theme,
       language,
       t,
@@ -216,20 +135,12 @@ export const useClipboardItemRenderer = ({
       sensitiveMaskSuffixVisible,
       sensitiveMaskEmailDomain,
       quickPasteHintsById,
-      processingAiId,
-      aiEnabled,
-      aiOptionsOpenId,
-      setAiOptionsOpenId,
       copyToClipboard,
       setSelectedIndex,
       setRevealedIds,
       openContent,
       togglePin,
-      deleteEntry,
-      setEditingTagsId,
-      setTagInput,
-      handleUpdateTags,
-      handleAIAction
+      deleteEntry
     ]
   );
 
