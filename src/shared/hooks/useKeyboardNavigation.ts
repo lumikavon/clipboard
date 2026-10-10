@@ -39,7 +39,8 @@ export const useKeyboardNavigation = ({
   const isKeyboardModeRef = useRef(isKeyboardMode);
   const isWindowVisibleRef = useWindowVisibility();
   const showSettingsRef = useRef(showSettings);
-  const arrowKeySelectionRef = useRef(arrowKeySelection);
+  // Arrow key selection setting removed: always enabled.
+  const arrowKeySelectionRef = useRef(true);
   const copyToClipboardRef = useRef(copyToClipboard);
   const richPasteHotkeyRef = useRef(richPasteHotkey);
 
@@ -47,7 +48,7 @@ export const useKeyboardNavigation = ({
   useEffect(() => { selectedIndexRef.current = selectedIndex; }, [selectedIndex]);
   useEffect(() => { isKeyboardModeRef.current = isKeyboardMode; }, [isKeyboardMode]);
   useEffect(() => { showSettingsRef.current = showSettings; }, [showSettings]);
-  useEffect(() => { arrowKeySelectionRef.current = arrowKeySelection; }, [arrowKeySelection]);
+  useEffect(() => { arrowKeySelectionRef.current = true; void arrowKeySelection; }, [arrowKeySelection]);
   useEffect(() => { copyToClipboardRef.current = copyToClipboard; }, [copyToClipboard]);
   useEffect(() => { richPasteHotkeyRef.current = richPasteHotkey; }, [richPasteHotkey]);
   useEffect(() => {
@@ -183,7 +184,7 @@ export const useKeyboardNavigation = ({
       const currentIndex = selectedIndexRef.current;
       const isNavMode = isKeyboardModeRef.current;
 
-      if ((action === "up" || action === "down") && !arrowKeySelection) {
+      if ((action === "up" || action === "down") && !arrowKeySelectionRef.current) {
         return;
       }
 

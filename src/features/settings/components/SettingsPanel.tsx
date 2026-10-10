@@ -1,34 +1,17 @@
 
-import { memo, useState, useEffect, useCallback } from "react";
+import { memo, useState, useEffect } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import { ChevronRight, HelpCircle } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import { motion } from "framer-motion";
-import type { Locale } from "../../../shared/types";
-import type { DefaultAppsMap, InstalledAppOption, SettingsSubpage } from "../../app/types";
-import type { AppCleanupPolicy } from "../types";
-import AppSelectorModal from "./AppSelectorModal";
 import GeneralSettingsGroup from "./groups/GeneralSettingsGroup";
 import ClipboardSettingsGroup from "./groups/ClipboardSettingsGroup";
-import AdvancedSettingsGroup from "./groups/AdvancedSettingsGroup";
-import AppearanceSettingsGroup from "./groups/AppearanceSettingsGroup";
-import DefaultAppsSettingsGroup from "./groups/DefaultAppsSettingsGroup";
 import DataSettingsGroup from "./groups/DataSettingsGroup";
 import SettingsFooter from "./SettingsFooter";
-import ThemeStorePanel from "../../theme-store/components/ThemeStorePanel";
+
+type SettingsTab = "general" | "clipboard" | "data";
 
 interface SettingsPanelProps {
     t: (key: string) => string;
-    theme: string;
-    language: Locale;
-    colorMode: string;
-    showSourceAppIcon: boolean;
-    setShowSourceAppIcon: (val: boolean) => void;
-    clipboardItemFontSize: number;
-    setClipboardItemFontSize: (val: number) => void;
-
-    // State
-    collapsedGroups: Record<string, boolean>;
-    settingsSubpage: SettingsSubpage;
     autoStart: boolean;
     silentStart: boolean;
     persistent: boolean;
@@ -60,51 +43,14 @@ interface SettingsPanelProps {
     setSensitiveMaskSuffixVisible: (val: number) => void;
     sensitiveMaskEmailDomain: boolean;
     setSensitiveMaskEmailDomain: (val: boolean) => void;
-    cleanupRules: string;
-    setCleanupRules: (val: string) => void;
-    appCleanupPolicies: AppCleanupPolicy[];
-    setAppCleanupPolicies: (val: AppCleanupPolicy[]) => void;
     hotkey: string;
-    showHotkeyHint: boolean;
-    showSearchBox: boolean;
-    setShowSearchBox: (val: boolean) => void;
     scrollTopButtonEnabled: boolean;
     setScrollTopButtonEnabled: (val: boolean) => void;
-    emojiPanelEnabled: boolean;
-    setEmojiPanelEnabled: (val: boolean) => void;
-    arrowKeySelection: boolean;
-    setArrowKeySelection: (val: boolean) => void;
-
-
-    soundEnabled: boolean;
-    setSoundEnabled: (val: boolean) => void;
-    pasteSoundEnabled: boolean;
-    setPasteSoundEnabled: (val: boolean) => void;
-    soundVolume: number;
-    setSoundVolume: (val: number) => void;
     hideTrayIcon: boolean;
     setHideTrayIcon: (val: boolean) => void;
     hideDockIcon: boolean;
     setHideDockIcon: (val: boolean) => void;
-    edgeDocking: boolean;
-    setEdgeDocking: (val: boolean) => void;
-    customBackground: string;
-    setCustomBackground: (val: string) => void;
-    customBackgroundOpacity: number;
-    setCustomBackgroundOpacity: (val: number) => void;
-    surfaceOpacity: number;
-    setSurfaceOpacity: (val: number) => void;
-
-
-    installedApps: InstalledAppOption[];
-    appSettings: Record<string, string>;
-    defaultApps: DefaultAppsMap;
-    showAppSelector: string | null;
     dataPath: string;
-
-    // Setters/Actions
-    toggleGroup: (group: string) => void;
-    setSettingsSubpage: (val: SettingsSubpage) => void;
     setAutoStart: (val: boolean) => void;
     setSilentStart: (val: boolean) => void;
     setPersistent: (val: boolean) => void;
@@ -117,7 +63,6 @@ interface SettingsPanelProps {
     setDeleteAfterPaste: (val: boolean) => void;
     setMoveToTopAfterPaste: (val: boolean) => void;
     saveAppSetting: (key: string, val: string) => void;
-    saveSetting: (key: string, val: string) => void;
     setSequentialModeState: (val: boolean) => void;
     setIsRecordingSequential: (val: boolean) => void;
     updateSequentialHotkey: (key: string) => void;
@@ -126,55 +71,36 @@ interface SettingsPanelProps {
     setIsRecordingSearch: (val: boolean) => void;
     updateSearchHotkey: (key: string) => void;
     setPrivacyProtection: (val: boolean) => void;
-    setShowHotkeyHint: (val: boolean) => void;
     setIsRecording: (val: boolean) => void;
     isRecording: boolean;
     hotkeyParts: string[];
     updateHotkey: (key: string) => void;
-
-    setTheme: (val: string) => void;
-    setColorMode: (val: string) => void;
-    setLanguage: (val: Locale) => void;
-
-
-    compactMode: boolean;
-    setCompactMode: (val: boolean) => void;
     checkHotkeyConflict: (newHotkey: string, mode: 'main' | 'sequential' | 'rich' | 'search') => boolean;
-
-
-    setShowAppSelector: (val: string | null) => void;
     handleResetSettings: () => void;
 }
 
 const SettingsPanel = (props: SettingsPanelProps) => {
     const {
-        t, theme, language, colorMode, showSourceAppIcon, setShowSourceAppIcon,
-        collapsedGroups, settingsSubpage, autoStart, silentStart, persistent, persistentLimitEnabled, persistentLimit, deduplicate, captureFiles, captureRichText, richTextSnapshotPreview, deleteAfterPaste, moveToTopAfterPaste,
+        t, autoStart, silentStart, persistent, persistentLimitEnabled, persistentLimit, deduplicate, captureFiles, captureRichText, richTextSnapshotPreview, deleteAfterPaste, moveToTopAfterPaste,
         sequentialMode, sequentialHotkey, isRecordingSequential,
         richPasteHotkey, isRecordingRich, searchHotkey, isRecordingSearch, quickPasteModifier, setQuickPasteModifier,
-        privacyProtection, privacyProtectionKinds, setPrivacyProtectionKinds, privacyProtectionCustomRules, setPrivacyProtectionCustomRules, sensitiveMaskPrefixVisible, setSensitiveMaskPrefixVisible, sensitiveMaskSuffixVisible, setSensitiveMaskSuffixVisible, sensitiveMaskEmailDomain, setSensitiveMaskEmailDomain, cleanupRules, setCleanupRules, appCleanupPolicies, setAppCleanupPolicies, showSearchBox, setShowSearchBox, scrollTopButtonEnabled, setScrollTopButtonEnabled, arrowKeySelection, setArrowKeySelection,
-        soundEnabled, setSoundEnabled, pasteSoundEnabled, setPasteSoundEnabled,
-        soundVolume, setSoundVolume,
+        privacyProtection, privacyProtectionKinds, setPrivacyProtectionKinds, privacyProtectionCustomRules, setPrivacyProtectionCustomRules, sensitiveMaskPrefixVisible, setSensitiveMaskPrefixVisible, sensitiveMaskSuffixVisible, setSensitiveMaskSuffixVisible, sensitiveMaskEmailDomain, setSensitiveMaskEmailDomain,
+        hotkey,
+        scrollTopButtonEnabled, setScrollTopButtonEnabled,
         hideTrayIcon, setHideTrayIcon,
         hideDockIcon, setHideDockIcon,
-        edgeDocking, setEdgeDocking,
-        customBackground, setCustomBackground,
-        customBackgroundOpacity, setCustomBackgroundOpacity,
-        surfaceOpacity, setSurfaceOpacity,
-        installedApps, appSettings, defaultApps, showAppSelector, dataPath,
-
-        toggleGroup, setSettingsSubpage, setAutoStart, setSilentStart, setPersistent, setPersistentLimitEnabled, setPersistentLimit, setDeduplicate, setCaptureFiles, setCaptureRichText, setRichTextSnapshotPreview, setDeleteAfterPaste, setMoveToTopAfterPaste, saveAppSetting,
+        dataPath,
+        setAutoStart, setSilentStart, setPersistent, setPersistentLimitEnabled, setPersistentLimit, setDeduplicate, setCaptureFiles, setCaptureRichText, setRichTextSnapshotPreview, setDeleteAfterPaste, setMoveToTopAfterPaste, saveAppSetting,
         setSequentialModeState, setIsRecordingSequential, updateSequentialHotkey,
         setIsRecordingRich, updateRichPasteHotkey,
         setIsRecordingSearch, updateSearchHotkey,
         setPrivacyProtection,
-        setIsRecording, isRecording, hotkey, hotkeyParts, updateHotkey,
-        setTheme, setColorMode, setLanguage, compactMode, setCompactMode, checkHotkeyConflict,
-        clipboardItemFontSize, setClipboardItemFontSize,
-        emojiPanelEnabled, setEmojiPanelEnabled,
-        setShowAppSelector, handleResetSettings
+        setIsRecording, isRecording, hotkeyParts, updateHotkey,
+        checkHotkeyConflict,
+        handleResetSettings
     } = props;
 
+    const [activeTab, setActiveTab] = useState<SettingsTab>("general");
     const [emailCopied, setEmailCopied] = useState(false);
     const [appVersion, setAppVersion] = useState("");
     const [updateStatus, setUpdateStatus] = useState<string>("");
@@ -224,9 +150,11 @@ const SettingsPanel = (props: SettingsPanelProps) => {
             });
     }, []);
 
-    const openAdvancedSettingsWindow = useCallback(() => {
-        setSettingsSubpage("advanced");
-    }, [setSettingsSubpage]);
+    const tabs: Array<{ id: SettingsTab; label: string }> = [
+        { id: "general", label: t("general_settings") },
+        { id: "clipboard", label: t("clipboard_settings") },
+        { id: "data", label: t("data_management") },
+    ];
 
     return (
         <motion.div
@@ -234,200 +162,112 @@ const SettingsPanel = (props: SettingsPanelProps) => {
             animate={{ opacity: 1, x: 0 }}
             style={{ display: 'flex', flexDirection: 'column', gap: '4px', minHeight: '100%', flex: 1 }}
         >
-            {settingsSubpage === "theme-store" ? (
-                <ThemeStorePanel
-                    t={t}
-                    theme={theme}
-                    setTheme={setTheme}
-                    saveAppSetting={saveAppSetting}
-                    language={language}
-                    onBack={() => setSettingsSubpage("home")}
-                />
-            ) : settingsSubpage === "advanced" ? (
-                <>
-                    <AdvancedSettingsGroup
-                        t={t}
-                        cleanupRules={cleanupRules}
-                        setCleanupRules={setCleanupRules}
-                        appCleanupPolicies={appCleanupPolicies}
-                        setAppCleanupPolicies={setAppCleanupPolicies}
-                        installedApps={installedApps}
-                    />
-
-                    <AppSelectorModal
-                        show={showAppSelector}
-                        installedApps={installedApps}
-                        theme={theme}
-                        colorMode={colorMode}
-                        t={t}
-                        onClose={() => setShowAppSelector(null)}
-                        onSave={saveAppSetting}
-                    />
-                </>
-            ) : (
-                <>
-            {/* General Settings */}
-            <GeneralSettingsGroup
-                t={t}
-                collapsed={collapsedGroups['general']}
-                onToggle={() => toggleGroup('general')}
-                LabelWithHint={LabelWithHint}
-                autoStart={autoStart}
-                setAutoStart={setAutoStart}
-                silentStart={silentStart}
-                setSilentStart={setSilentStart}
-                hideTrayIcon={hideTrayIcon}
-                setHideTrayIcon={setHideTrayIcon}
-                hideDockIcon={hideDockIcon}
-                setHideDockIcon={setHideDockIcon}
-                edgeDocking={edgeDocking}
-                setEdgeDocking={setEdgeDocking}
-                soundEnabled={soundEnabled}
-                setSoundEnabled={setSoundEnabled}
-                pasteSoundEnabled={pasteSoundEnabled}
-                setPasteSoundEnabled={setPasteSoundEnabled}
-                soundVolume={soundVolume}
-                setSoundVolume={setSoundVolume}
-                showSearchBox={showSearchBox}
-                setShowSearchBox={setShowSearchBox}
-                scrollTopButtonEnabled={scrollTopButtonEnabled}
-                setScrollTopButtonEnabled={setScrollTopButtonEnabled}
-                emojiPanelEnabled={emojiPanelEnabled}
-                setEmojiPanelEnabled={setEmojiPanelEnabled}
-                arrowKeySelection={arrowKeySelection}
-                setArrowKeySelection={setArrowKeySelection}
-                saveAppSetting={saveAppSetting}
-            />
-
-            {/* Clipboard Settings */}
-            <ClipboardSettingsGroup
-                t={t}
-                collapsed={collapsedGroups['clipboard']}
-                onToggle={() => toggleGroup('clipboard')}
-                LabelWithHint={LabelWithHint}
-                persistent={persistent}
-                setPersistent={setPersistent}
-                persistentLimitEnabled={persistentLimitEnabled}
-                setPersistentLimitEnabled={setPersistentLimitEnabled}
-                persistentLimit={persistentLimit}
-                setPersistentLimit={setPersistentLimit}
-                saveAppSetting={saveAppSetting}
-                deduplicate={deduplicate}
-                setDeduplicate={setDeduplicate}
-                captureFiles={captureFiles}
-                setCaptureFiles={setCaptureFiles}
-                captureRichText={captureRichText}
-                setCaptureRichText={setCaptureRichText}
-                richTextSnapshotPreview={richTextSnapshotPreview}
-                setRichTextSnapshotPreview={setRichTextSnapshotPreview}
-                richPasteHotkey={richPasteHotkey}
-                isRecordingRich={isRecordingRich}
-                setIsRecordingRich={setIsRecordingRich}
-                updateRichPasteHotkey={updateRichPasteHotkey}
-                searchHotkey={searchHotkey}
-                isRecordingSearch={isRecordingSearch}
-                setIsRecordingSearch={setIsRecordingSearch}
-                updateSearchHotkey={updateSearchHotkey}
-                quickPasteModifier={quickPasteModifier}
-                setQuickPasteModifier={setQuickPasteModifier}
-                deleteAfterPaste={deleteAfterPaste}
-                setDeleteAfterPaste={setDeleteAfterPaste}
-                moveToTopAfterPaste={moveToTopAfterPaste}
-                setMoveToTopAfterPaste={setMoveToTopAfterPaste}
-                sequentialMode={sequentialMode}
-                setSequentialModeState={setSequentialModeState}
-                sequentialHotkey={sequentialHotkey}
-                isRecordingSequential={isRecordingSequential}
-                setIsRecordingSequential={setIsRecordingSequential}
-                updateSequentialHotkey={updateSequentialHotkey}
-                checkHotkeyConflict={checkHotkeyConflict}
-                privacyProtection={privacyProtection}
-                setPrivacyProtection={setPrivacyProtection}
-                privacyProtectionKinds={privacyProtectionKinds}
-                setPrivacyProtectionKinds={setPrivacyProtectionKinds}
-                privacyProtectionCustomRules={privacyProtectionCustomRules}
-                setPrivacyProtectionCustomRules={setPrivacyProtectionCustomRules}
-                sensitiveMaskPrefixVisible={sensitiveMaskPrefixVisible}
-                setSensitiveMaskPrefixVisible={setSensitiveMaskPrefixVisible}
-                sensitiveMaskSuffixVisible={sensitiveMaskSuffixVisible}
-                setSensitiveMaskSuffixVisible={setSensitiveMaskSuffixVisible}
-                sensitiveMaskEmailDomain={sensitiveMaskEmailDomain}
-                setSensitiveMaskEmailDomain={setSensitiveMaskEmailDomain}
-                privacyKindsOpen={privacyKindsOpen}
-                setPrivacyKindsOpen={setPrivacyKindsOpen}
-                privacyRulesOpen={privacyRulesOpen}
-                setPrivacyRulesOpen={setPrivacyRulesOpen}
-
-                isRecording={isRecording}
-                setIsRecording={setIsRecording}
-                hotkeyParts={hotkeyParts}
-                updateHotkey={updateHotkey}
-                hotkey={hotkey}
-                appSettings={appSettings}
-                theme={theme}
-                colorMode={colorMode}
-            />
-
-            {/* Appearance Settings */}
-            <AppearanceSettingsGroup
-                t={t}
-                collapsed={collapsedGroups['appearance']}
-                onToggle={() => toggleGroup('appearance')}
-                LabelWithHint={LabelWithHint}
-                theme={theme}
-                setTheme={setTheme}
-                colorMode={colorMode}
-                setColorMode={setColorMode}
-                language={language}
-                setLanguage={setLanguage}
-                showSourceAppIcon={showSourceAppIcon}
-                setShowSourceAppIcon={setShowSourceAppIcon}
-                compactMode={compactMode}
-                setCompactMode={setCompactMode}
-                clipboardItemFontSize={clipboardItemFontSize}
-                setClipboardItemFontSize={setClipboardItemFontSize}
-                customBackground={customBackground}
-                setCustomBackground={setCustomBackground}
-                customBackgroundOpacity={customBackgroundOpacity}
-                setCustomBackgroundOpacity={setCustomBackgroundOpacity}
-                surfaceOpacity={surfaceOpacity}
-                setSurfaceOpacity={setSurfaceOpacity}
-                saveAppSetting={saveAppSetting}
-                setSettingsSubpage={setSettingsSubpage}
-            />
-
-            {/* Default Apps Settings */}
-            <DefaultAppsSettingsGroup
-                t={t}
-                collapsed={collapsedGroups['default_apps']}
-                onToggle={() => toggleGroup('default_apps')}
-                installedApps={installedApps}
-                appSettings={appSettings}
-                defaultApps={defaultApps}
-                setShowAppSelector={setShowAppSelector}
-            />
-
-            {/* Data Management Settings */}
-            <DataSettingsGroup
-                t={t}
-                collapsed={collapsedGroups['data']}
-                onToggle={() => toggleGroup('data')}
-                dataPath={dataPath}
-            />
-
-            <div className="settings-group">
-                <button
-                    type="button"
-                    className="group-header settings-nav-card"
-                    onClick={openAdvancedSettingsWindow}
-                >
-                    <div style={{ minWidth: 0, textAlign: "left" }}>
-                        <h3 style={{ margin: 0 }}>{t("advanced_settings")}</h3>
-                        <div className="settings-subpage-note">{t("advanced_settings_entry_desc")}</div>
-                    </div>
-                    <ChevronRight size={16} />
-                </button>
+            <div className="settings-tabs" role="tablist">
+                {tabs.map(tab => (
+                    <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={activeTab === tab.id}
+                        className={`settings-tab-btn ${activeTab === tab.id ? "active" : ""}`}
+                        onClick={() => setActiveTab(tab.id)}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
             </div>
+
+            {activeTab === "general" && (
+                <GeneralSettingsGroup
+                    t={t}
+                    LabelWithHint={LabelWithHint}
+                    autoStart={autoStart}
+                    setAutoStart={setAutoStart}
+                    silentStart={silentStart}
+                    setSilentStart={setSilentStart}
+                    hideTrayIcon={hideTrayIcon}
+                    setHideTrayIcon={setHideTrayIcon}
+                    hideDockIcon={hideDockIcon}
+                    setHideDockIcon={setHideDockIcon}
+                    scrollTopButtonEnabled={scrollTopButtonEnabled}
+                    setScrollTopButtonEnabled={setScrollTopButtonEnabled}
+                    saveAppSetting={saveAppSetting}
+                />
+            )}
+
+            {activeTab === "clipboard" && (
+                <ClipboardSettingsGroup
+                    t={t}
+                    LabelWithHint={LabelWithHint}
+                    persistent={persistent}
+                    setPersistent={setPersistent}
+                    persistentLimitEnabled={persistentLimitEnabled}
+                    setPersistentLimitEnabled={setPersistentLimitEnabled}
+                    persistentLimit={persistentLimit}
+                    setPersistentLimit={setPersistentLimit}
+                    saveAppSetting={saveAppSetting}
+                    deduplicate={deduplicate}
+                    setDeduplicate={setDeduplicate}
+                    captureFiles={captureFiles}
+                    setCaptureFiles={setCaptureFiles}
+                    captureRichText={captureRichText}
+                    setCaptureRichText={setCaptureRichText}
+                    richTextSnapshotPreview={richTextSnapshotPreview}
+                    setRichTextSnapshotPreview={setRichTextSnapshotPreview}
+                    richPasteHotkey={richPasteHotkey}
+                    isRecordingRich={isRecordingRich}
+                    setIsRecordingRich={setIsRecordingRich}
+                    updateRichPasteHotkey={updateRichPasteHotkey}
+                    searchHotkey={searchHotkey}
+                    isRecordingSearch={isRecordingSearch}
+                    setIsRecordingSearch={setIsRecordingSearch}
+                    updateSearchHotkey={updateSearchHotkey}
+                    quickPasteModifier={quickPasteModifier}
+                    setQuickPasteModifier={setQuickPasteModifier}
+                    deleteAfterPaste={deleteAfterPaste}
+                    setDeleteAfterPaste={setDeleteAfterPaste}
+                    moveToTopAfterPaste={moveToTopAfterPaste}
+                    setMoveToTopAfterPaste={setMoveToTopAfterPaste}
+                    sequentialMode={sequentialMode}
+                    setSequentialModeState={setSequentialModeState}
+                    sequentialHotkey={sequentialHotkey}
+                    isRecordingSequential={isRecordingSequential}
+                    setIsRecordingSequential={setIsRecordingSequential}
+                    updateSequentialHotkey={updateSequentialHotkey}
+                    checkHotkeyConflict={checkHotkeyConflict}
+                    privacyProtection={privacyProtection}
+                    setPrivacyProtection={setPrivacyProtection}
+                    privacyProtectionKinds={privacyProtectionKinds}
+                    setPrivacyProtectionKinds={setPrivacyProtectionKinds}
+                    privacyProtectionCustomRules={privacyProtectionCustomRules}
+                    setPrivacyProtectionCustomRules={setPrivacyProtectionCustomRules}
+                    sensitiveMaskPrefixVisible={sensitiveMaskPrefixVisible}
+                    setSensitiveMaskPrefixVisible={setSensitiveMaskPrefixVisible}
+                    sensitiveMaskSuffixVisible={sensitiveMaskSuffixVisible}
+                    setSensitiveMaskSuffixVisible={setSensitiveMaskSuffixVisible}
+                    sensitiveMaskEmailDomain={sensitiveMaskEmailDomain}
+                    setSensitiveMaskEmailDomain={setSensitiveMaskEmailDomain}
+                    privacyKindsOpen={privacyKindsOpen}
+                    setPrivacyKindsOpen={setPrivacyKindsOpen}
+                    privacyRulesOpen={privacyRulesOpen}
+                    setPrivacyRulesOpen={setPrivacyRulesOpen}
+                    isRecording={isRecording}
+                    setIsRecording={setIsRecording}
+                    hotkeyParts={hotkeyParts}
+                    updateHotkey={updateHotkey}
+                    hotkey={hotkey}
+                    appSettings={{}}
+                    theme=""
+                    colorMode=""
+                />
+            )}
+
+            {activeTab === "data" && (
+                <DataSettingsGroup
+                    t={t}
+                    dataPath={dataPath}
+                />
+            )}
 
             <SettingsFooter
                 t={t}
@@ -438,18 +278,6 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 emailCopied={emailCopied}
                 setEmailCopied={setEmailCopied}
             />
-
-            <AppSelectorModal
-                show={showAppSelector}
-                installedApps={installedApps}
-                theme={theme}
-                colorMode={colorMode}
-                t={t}
-                onClose={() => setShowAppSelector(null)}
-                onSave={saveAppSetting}
-            />
-                </>
-            )}
         </motion.div>
     );
 };

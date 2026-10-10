@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { translations } from "../../../locales";
 import SettingsPanel from "./SettingsPanel";
@@ -14,6 +14,8 @@ import { useOverlays } from "../../../shared/hooks/useOverlays";
 import { useSettingsPanelReset } from "../../../shared/hooks/useSettingsPanelReset";
 import ToastContainer from "../../../shared/components/ToastContainer";
 import ConfirmDialog from "../../../shared/components/ConfirmDialog";
+import ContextMenu from "../../../shared/components/ContextMenu";
+import { useContextMenu } from "../../../shared/hooks/useContextMenu";
 
 /**
  * Independent settings window root (`index.html?window=settings`).
@@ -71,6 +73,20 @@ const SettingsWindow = () => {
     }, [language]);
 
     const { toasts, pushToast, confirmDialog, openConfirm, closeConfirm } = useOverlays();
+
+    const openDevtools = useCallback(() => {
+        invoke("open_devtools").catch((err) => {
+            console.error("Failed to open devtools:", err);
+            pushToast(String(err) || t("devtools_unavailable"), 3000);
+        });
+    }, [pushToast, t]);
+
+    const contextMenuItems = useMemo(
+        () => [{ label: t("open_devtools"), onClick: openDevtools }],
+        [t, openDevtools]
+    );
+
+    const { contextMenu, closeContextMenu } = useContextMenu(contextMenuItems);
 
     const settings = useSettingsInit({
         setAppSettings,
@@ -202,6 +218,27 @@ const SettingsWindow = () => {
 
     useSettingsPanelReset({ showSettings: true, setCollapsedGroups, setSettingsSubpage });
 
+    // Keep the main window visible while this standalone settings window is open.
+    // Backend also skips auto-hide when the settings window exists; this covers
+    // the race where main blurs before the settings window is visible, and
+    // resets the flag when settings closes.
+    useEffect(() => {
+        invoke("set_ignore_blur", { ignore: true }).catch(() => {});
+        const handleBeforeUnload = () => {
+            // Fire-and-forget: page is being torn down.
+            try {
+                void invoke("set_ignore_blur", { ignore: false });
+            } catch {
+                // Ignore teardown errors.
+            }
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+            invoke("set_ignore_blur", { ignore: false }).catch(() => {});
+        };
+    }, []);
+
     const handleResetSettings = useCallback(() => {
         openConfirm({
             title: t("reset_confirm"),
@@ -248,6 +285,8 @@ const SettingsWindow = () => {
                 <SettingsPanel {...settingsPanelProps} />
             </div>
             <ToastContainer toasts={toasts} />
+
+            <ContextMenu state={contextMenu} onClose={closeContextMenu} />
             <ConfirmDialog
                 open={confirmDialog.show}
                 title={confirmDialog.title}

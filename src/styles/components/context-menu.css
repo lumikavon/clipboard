@@ -1,0 +1,29 @@
+.app-context-menu {
+  position: fixed;
+  z-index: 1000000;
+  min-width: 160px;
+  padding: 4px;
+  border: 2px solid var(--border-dark);
+  border-radius: 6px;
+  background: var(--bg-element);
+  box-shadow: 4px 4px 0 0 var(--shadow-color);
+}
+
+.app-context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.app-context-menu-item:hover {
+  background: var(--accent-color);
+  color: #ffffff;
+}

@@ -27,7 +27,8 @@ import { useToastListener } from "./shared/hooks/useToastListener";
 import { useAppBootstrap } from "./shared/hooks/useAppBootstrap";
 import { useAppActions } from "./shared/hooks/useAppActions";
 import { useNavigationSync } from "./shared/hooks/useNavigationSync";
-import { useContextMenuBlock } from "./shared/hooks/useContextMenuBlock";
+import { useContextMenu } from "./shared/hooks/useContextMenu";
+import ContextMenu from "./shared/components/ContextMenu";
 import { useSettingsPanelReset } from "./shared/hooks/useSettingsPanelReset";
 import { matchesHotkey } from "./shared/hooks/useHotkeyMatching";
 import { usePinnedSort } from "./shared/hooks/usePinnedSort";
@@ -37,8 +38,6 @@ import { useListSelectionReset } from "./shared/hooks/useListSelectionReset";
 import { useSearchFetchTrigger } from "./shared/hooks/useSearchFetchTrigger";
 import { useScrollToSelection } from "./shared/hooks/useScrollToSelection";
 import { useClipboardItemRenderer } from "./shared/hooks/useClipboardItemRenderer";
-import { AnnouncementSystem } from "./shared/components/Announcement";
-import { useAnnouncements } from "./shared/hooks/useAnnouncements";
 import { useOverlays } from "./shared/hooks/useOverlays";
 import { useAutoUpdate } from "./shared/hooks/useAutoUpdate";
 import UpdateDialog from "./shared/components/UpdateDialog";
@@ -278,7 +277,9 @@ const App = () => {
   } = useAutoUpdate();
   // -------------------------
 
-  const effectiveShowEmojiPanel = showEmojiPanel && emojiPanelEnabled;
+  // Emoji toggle removed: panel availability no longer gated.
+  void emojiPanelEnabled;
+  const effectiveShowEmojiPanel = showEmojiPanel;
 
   const debouncedSearch = useDebounce(search, 400);
   const searchInputRef = useInputFocus<HTMLInputElement>();
@@ -398,8 +399,6 @@ const App = () => {
 
   useSoundEffects({ soundEnabled, pasteSoundEnabled, soundVolume });
 
-  const { announcements, dismissAnnouncement } = useAnnouncements();
-
   const settings = useSettingsInit({
     setAppSettings,
     setHotkey,
@@ -489,10 +488,8 @@ const App = () => {
   ]);
 
   useEffect(() => {
-    if (!emojiPanelEnabled && showEmojiPanel) {
-      setShowEmojiPanel(false);
-    }
-  }, [emojiPanelEnabled, showEmojiPanel, setShowEmojiPanel]);
+    setShowSearchBox(true);
+  }, [setShowSearchBox]);
 
   useAppBootstrap({
     setDataPath,
@@ -506,7 +503,19 @@ const App = () => {
     onPinnedChange: setIsWindowPinned
   });
 
-  useContextMenuBlock();
+  const openDevtools = useCallback(() => {
+    invoke("open_devtools").catch((err) => {
+      console.error("Failed to open devtools:", err);
+      pushToast(String(err) || t("devtools_unavailable"), 3000);
+    });
+  }, [pushToast, t]);
+
+  const contextMenuItems = useMemo(
+    () => [{ label: t("open_devtools"), onClick: openDevtools }],
+    [t, openDevtools]
+  );
+
+  const { contextMenu, closeContextMenu } = useContextMenu(contextMenuItems);
 
   useSettingsApply({
     theme,
@@ -814,11 +823,6 @@ const App = () => {
         onBack={handleHeaderBack}
       />
 
-      <AnnouncementSystem
-        announcements={announcements}
-        onDismiss={dismissAnnouncement}
-      />
-
       <main
         className="main-content"
         style={{ 
@@ -856,6 +860,8 @@ const App = () => {
       </main>
 
       <ToastContainer toasts={toasts} />
+
+      <ContextMenu state={contextMenu} onClose={closeContextMenu} />
 
       <ConfirmDialog
         open={confirmDialog.show}

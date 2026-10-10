@@ -14,8 +14,6 @@ interface LabelWithHintProps {
 
 interface ClipboardSettingsGroupProps {
     t: (key: string) => string;
-    collapsed: boolean;
-    onToggle: () => void;
     LabelWithHint: ComponentType<LabelWithHintProps>;
     persistent: boolean;
     setPersistent: (val: boolean) => void;
@@ -129,13 +127,8 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
     };
 
     return (
-        <div className={`settings-group ${props.collapsed ? 'collapsed' : ''}`}>
-            <div className="group-header" onClick={props.onToggle}>
-                <h3 style={{ margin: 0 }}>{props.t('clipboard_settings')}</h3>
-                {props.collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-            </div>
-            {!props.collapsed && (
-                <div className="group-content">
+        <div className="settings-group">
+            <div className="group-content">
                     <div className="setting-item">
                         <props.LabelWithHint
                             label={props.t('persistent_storage')}
@@ -746,7 +739,6 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
 
                     {/* macOS cleanup: Removed Win+V Shortcut switch */}
                 </div>
-            )}
         </div>
     );
 };

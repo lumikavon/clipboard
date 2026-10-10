@@ -538,7 +538,6 @@ dependencies = [
  "clipboard-rs",
  "dotenvy",
  "image",
- "machine-uid",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
@@ -548,7 +547,6 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
- "sha2",
  "tauri",
  "tauri-build",
  "tauri-plugin-autostart",
@@ -2528,17 +2526,6 @@ dependencies = [
  "objc2",
  "objc2-foundation",
  "time",
-]
-
-[[package]]
-name = "machine-uid"
-version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d7217d573cdb141d6da43113b098172e057d39915d79c4bdedbc3aacd46bd96"
-dependencies = [
- "libc",
- "windows-registry",
- "windows-sys 0.61.2",
 ]
 
 [[package]]

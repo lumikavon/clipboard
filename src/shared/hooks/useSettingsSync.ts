@@ -58,10 +58,11 @@ export const useSettingsSync = ({
   }, [saveAppSetting, settingsLoaded, soundVolume]);
 
   useEffect(() => {
-    invoke("set_arrow_key_selection", { enabled: arrowKeySelection }).catch(console.error);
-    if (!arrowKeySelection) {
-      setIsKeyboardMode(false);
-      setSelectedIndex(0);
-    }
+    // Arrow key selection is always enabled (setting removed).
+    // Keep backend in sync for global hotkey navigation.
+    invoke("set_arrow_key_selection", { enabled: true }).catch(console.error);
+    void arrowKeySelection;
+    void setIsKeyboardMode;
+    void setSelectedIndex;
   }, [arrowKeySelection, setIsKeyboardMode, setSelectedIndex]);
 };

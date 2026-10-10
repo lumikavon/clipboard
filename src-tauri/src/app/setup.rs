@@ -20,16 +20,14 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 use tauri::{App, AppHandle, Emitter, Manager};
 #[cfg(target_os = "windows")]
-use windows::Win32::Foundation::{HINSTANCE, HWND, POINT, RECT};
+use windows::Win32::Foundation::{HINSTANCE, HWND};
 #[cfg(target_os = "windows")]
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
-#[cfg(target_os = "windows")]
-use windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState;
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Shell::SetWindowSubclass;
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetCursorPos, GetWindowRect, RegisterWindowMessageW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
+    RegisterWindowMessageW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
 };
 
 static WINDOW_SIZE_SAVE_PENDING: AtomicBool = AtomicBool::new(false);
@@ -286,8 +284,7 @@ fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
             .unwrap_or(false),
         edge_docking: repo
             .get("app.edge_docking")
-            .unwrap_or(Some("false".to_string()))
-            .map(|v| v == "true")
+            .map(|_| false)
             .unwrap_or(false),
         follow_mouse: repo
             .get("app.follow_mouse")
@@ -315,9 +312,8 @@ fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
             .unwrap_or("Win+V".to_string()),
         arrow_key_selection: repo
             .get("app.arrow_key_selection")
-            .unwrap_or(Some("false".to_string()))
-            .map(|v| v == "true")
-            .unwrap_or(false),
+            .map(|_| true)
+            .unwrap_or(true),
     }
 }
 
@@ -418,13 +414,13 @@ fn setup_main_window(app: &App, s: &StartupSettings) {
             }
         }
 
-        if repair_window_position_if_needed(&window, s.edge_docking) {
+        if repair_window_position_if_needed(&window, false) {
             IS_HIDDEN.store(false, Ordering::Relaxed);
             CURRENT_DOCK.store(0, Ordering::Relaxed);
         }
     }
 
-    schedule_window_position_repair(app.handle().clone(), s.edge_docking);
+    schedule_window_position_repair(app.handle().clone(), false);
 
     // Handle silent start
     let args: Vec<String> = std::env::args().collect();
@@ -582,9 +578,6 @@ fn start_services(app: &App, s: &StartupSettings, app_handle: AppHandle) {
 
     let db_state = app.state::<DbState>();
 
-    // Daily app announcement ping
-    init_announcement_ping(app, &db_state.settings_repo);
-
     // Register active hotkeys based on current settings.
     let _ = crate::app::commands::register_hotkey(app_handle.clone(), s.main_hotkey.clone());
 
@@ -602,341 +595,12 @@ fn start_services(app: &App, s: &StartupSettings, app_handle: AppHandle) {
 }
 
 #[cfg(target_os = "windows")]
-fn start_edge_docking_monitor(app_handle: AppHandle) {
-    std::thread::spawn(move || {
-        loop {
-            std::thread::sleep(std::time::Duration::from_millis(150));
-
-            let settings = match app_handle.try_state::<SettingsState>() {
-                Some(s) => s,
-                None => continue,
-            };
-
-            if !settings.edge_docking.load(Ordering::Relaxed) {
-                if IS_HIDDEN.load(Ordering::Relaxed) {
-                    if let Some(window) = app_handle.get_webview_window("main") {
-                        let _ = window.show();
-                        IS_HIDDEN.store(false, Ordering::Relaxed);
-                        CURRENT_DOCK.store(0, Ordering::Relaxed);
-                    }
-                }
-                continue;
-            }
-
-            if let Some(window) = app_handle.get_webview_window("main") {
-                // Skip if window is minimized
-                if window.is_minimized().unwrap_or(false) {
-                    continue;
-                }
-
-                let is_window_visible = window.is_visible().unwrap_or(true);
-                let is_hidden_by_edge = IS_HIDDEN.load(Ordering::Relaxed);
-
-                // Skip edge docking checks if window was hidden by other mechanisms (paste, blur, etc.)
-                if !is_window_visible && !is_hidden_by_edge {
-                    continue;
-                }
-
-                let last_show = LAST_SHOW_TIMESTAMP.load(Ordering::Relaxed);
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis() as u64;
-
-                // While the clipboard window is actively shown via hotkey navigation,
-                // avoid immediate auto-docking right after showing.
-                if !is_hidden_by_edge
-                    && NAVIGATION_ENABLED.load(Ordering::SeqCst)
-                    && now.saturating_sub(last_show) < 800
-                {
-                    continue;
-                }
-
-                // Grace period after showing to prevent immediate re-dock
-                if now.saturating_sub(last_show) < 500 {
-                    continue;
-                }
-
-                let mut rect = RECT::default();
-                let hwnd = match window.hwnd() {
-                    Ok(h) => h,
-                    Err(_) => continue,
-                };
-                unsafe {
-                    let _ = GetWindowRect(HWND(hwnd.0), &mut rect);
-                }
-
-                let mut point = POINT::default();
-                unsafe {
-                    let _ = GetCursorPos(&mut point);
-                }
-
-                // Get current monitor info and validate
-                let monitor = match window.current_monitor() {
-                    Ok(Some(m)) => m,
-                    _ => continue,
-                };
-                let screen_size = monitor.size();
-                let screen_pos = monitor.position();
-
-                // Calculate monitor boundaries
-                let screen_left = screen_pos.x;
-                let screen_top = screen_pos.y;
-                let screen_right = screen_pos.x + screen_size.width as i32;
-                let screen_bottom = screen_pos.y + screen_size.height as i32;
-
-                // When hidden, check if mouse is near the edge sliver
-                let threshold = 5;
-                let is_mouse_near_edge = if is_hidden_by_edge {
-                    let current_dock = CURRENT_DOCK.load(Ordering::Relaxed);
-                    match current_dock {
-                        1 => {
-                            point.y <= screen_top + threshold
-                                && point.x >= rect.left
-                                && point.x <= rect.right
-                        } // Top
-                        2 => {
-                            point.x <= screen_left + threshold
-                                && point.y >= rect.top
-                                && point.y <= rect.bottom
-                        } // Left
-                        3 => {
-                            point.x >= screen_right - threshold
-                                && point.y >= rect.top
-                                && point.y <= rect.bottom
-                        } // Right
-                        _ => false,
-                    }
-                } else {
-                    false
-                };
-
-                let is_mouse_in = if is_hidden_by_edge {
-                    is_mouse_near_edge
-                } else {
-                    point.x >= rect.left
-                        && point.x <= rect.right
-                        && point.y >= rect.top
-                        && point.y <= rect.bottom
-                };
-
-                // Ensure window is actually on this monitor
-                let window_center_x = (rect.left + rect.right) / 2;
-                let window_center_y = (rect.top + rect.bottom) / 2;
-                let is_on_current_monitor = window_center_x >= screen_left
-                    && window_center_x < screen_right
-                    && window_center_y >= screen_top
-                    && window_center_y < screen_bottom;
-
-                if !is_hidden_by_edge && !is_on_current_monitor {
-                    if IS_HIDDEN.load(Ordering::Relaxed) {
-                        IS_HIDDEN.store(false, Ordering::Relaxed);
-                        CURRENT_DOCK.store(0, Ordering::Relaxed);
-                    }
-                    continue;
-                }
-
-                let hide_size = 3;
-
-                let mut dock = DockPosition::None;
-                if rect.top <= screen_top + threshold {
-                    dock = DockPosition::Top;
-                } else if rect.left <= screen_left + threshold {
-                    dock = DockPosition::Left;
-                } else if rect.right >= screen_right - threshold {
-                    dock = DockPosition::Right;
-                }
-
-                if is_hidden_by_edge {
-                    if is_mouse_in {
-                        let current_dock = CURRENT_DOCK.load(Ordering::Relaxed);
-                        let dock_actual = match current_dock {
-                            1 => DockPosition::Top,
-                            2 => DockPosition::Left,
-                            3 => DockPosition::Right,
-                            _ => DockPosition::None,
-                        };
-
-                        if dock_actual != DockPosition::None {
-                            let _ = window.show();
-                            match dock_actual {
-                                DockPosition::Top => {
-                                    let _ = window.set_position(tauri::Position::Physical(
-                                        tauri::PhysicalPosition {
-                                            x: rect.left,
-                                            y: screen_top,
-                                        },
-                                    ));
-                                }
-                                DockPosition::Left => {
-                                    let _ = window.set_position(tauri::Position::Physical(
-                                        tauri::PhysicalPosition {
-                                            x: screen_left,
-                                            y: rect.top,
-                                        },
-                                    ));
-                                }
-                                DockPosition::Right => {
-                                    let w = rect.right - rect.left;
-                                    let _ = window.set_position(tauri::Position::Physical(
-                                        tauri::PhysicalPosition {
-                                            x: screen_right - w,
-                                            y: rect.top,
-                                        },
-                                    ));
-                                }
-                                _ => {}
-                            }
-
-                            IS_HIDDEN.store(false, Ordering::Relaxed);
-                            CURRENT_DOCK.store(0, Ordering::Relaxed);
-                        }
-                    }
-                } else if dock != DockPosition::None {
-                    // Don't dock while dragging (Left Mouse Button down)
-                    let is_lbutton_down = unsafe { (GetAsyncKeyState(0x01) as u16 & 0x8000) != 0 };
-                    if is_mouse_in || is_lbutton_down {
-                        continue;
-                    }
-
-                    if !IS_HIDDEN.load(Ordering::Relaxed) {
-                        // Auto-enable pin only when docking occurs (runtime only, no DB write)
-                        if !WINDOW_PINNED.load(Ordering::Relaxed) {
-                            WINDOW_PINNED.store(true, Ordering::Relaxed);
-                            let _ = window.set_always_on_top(true);
-                            let _ = window.set_focusable(false);
-                            #[cfg(windows)]
-                            if let Ok(hwnd) = window.hwnd() {
-                                unsafe {
-                                    let ex_style =
-                                        windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(
-                                            HWND(hwnd.0),
-                                            GWL_EXSTYLE,
-                                        );
-                                    let _ =
-                                        windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(
-                                            HWND(hwnd.0),
-                                            GWL_EXSTYLE,
-                                            ex_style | WS_EX_NOACTIVATE.0 as isize,
-                                        );
-                                }
-                            }
-                            let _ = app_handle.emit("window-pinned-changed", true);
-                        }
-
-                        let window_height = rect.bottom - rect.top;
-                        let window_width = rect.right - rect.left;
-                        match dock {
-                            DockPosition::Top => {
-                                let _ = window.set_position(tauri::PhysicalPosition::new(
-                                    rect.left,
-                                    screen_top - window_height + hide_size,
-                                ));
-                                CURRENT_DOCK.store(1, Ordering::Relaxed);
-                            }
-                            DockPosition::Left => {
-                                let _ = window.set_position(tauri::PhysicalPosition::new(
-                                    screen_left - window_width + hide_size,
-                                    rect.top,
-                                ));
-                                CURRENT_DOCK.store(2, Ordering::Relaxed);
-                            }
-                            DockPosition::Right => {
-                                let _ = window.set_position(tauri::PhysicalPosition::new(
-                                    screen_right - hide_size,
-                                    rect.top,
-                                ));
-                                CURRENT_DOCK.store(3, Ordering::Relaxed);
-                            }
-                            _ => {}
-                        }
-                        IS_HIDDEN.store(true, Ordering::Relaxed);
-                    }
-                } else if IS_HIDDEN.load(Ordering::Relaxed) {
-                    IS_HIDDEN.store(false, Ordering::Relaxed);
-                    CURRENT_DOCK.store(0, Ordering::Relaxed);
-
-                    // Restore pinned state based on user setting when undocked
-                    let mut user_pinned = WINDOW_PINNED.load(Ordering::Relaxed);
-                    if let Some(db_state) = app_handle.try_state::<DbState>() {
-                        if let Ok(val) = db_state.settings_repo.get("app.window_pinned") {
-                            user_pinned = val.as_deref() == Some("true");
-                        }
-                    }
-
-                    let prev = WINDOW_PINNED.swap(user_pinned, Ordering::Relaxed);
-                    if prev != user_pinned {
-                        let _ = window.set_always_on_top(user_pinned);
-                        let _ = window.set_focusable(!user_pinned);
-                        #[cfg(windows)]
-                        if let Ok(hwnd) = window.hwnd() {
-                            unsafe {
-                                let ex_style =
-                                    windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(
-                                        HWND(hwnd.0),
-                                        GWL_EXSTYLE,
-                                    );
-                                let next = if user_pinned {
-                                    ex_style | WS_EX_NOACTIVATE.0 as isize
-                                } else {
-                                    ex_style & !(WS_EX_NOACTIVATE.0 as isize)
-                                };
-                                let _ = windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(
-                                    HWND(hwnd.0),
-                                    GWL_EXSTYLE,
-                                    next,
-                                );
-                            }
-                        }
-                        let _ = app_handle.emit("window-pinned-changed", user_pinned);
-                    }
-                }
-            }
-        }
-    });
+fn start_edge_docking_monitor(_app_handle: AppHandle) {
+    // Edge docking feature removed: intentionally no background monitor.
 }
 
 #[cfg(not(target_os = "windows"))]
 fn start_edge_docking_monitor(_app_handle: AppHandle) {}
-
-fn init_announcement_ping(app: &App, repo: &impl SettingsRepository) {
-    let machine_id = crate::app::system::get_machine_id();
-    let stored_anon_id = repo.get("app.anon_id").unwrap_or(None);
-    let anon_id = stored_anon_id
-        .as_deref()
-        .and_then(crate::app::system::normalize_anon_id)
-        .unwrap_or_else(|| crate::app::system::build_anon_id(&machine_id));
-
-    if stored_anon_id
-        .as_deref()
-        .map(|value| value.trim() != anon_id)
-        .unwrap_or(true)
-    {
-        let _ = repo.set("app.anon_id", &anon_id);
-    }
-
-    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
-    if repo.get("app.last_ping_date").unwrap_or(None).as_deref() != Some(&today) {
-        let _ = repo.set("app.last_ping_date", &today);
-        let version = app.package_info().version.to_string();
-        if let Ok(base_url) = std::env::var("TIEZ_ANNOUNCEMENT_PING_URL") {
-            let base_url = base_url.trim().to_string();
-            if !base_url.is_empty() {
-                std::thread::spawn(move || {
-                    let sep = if base_url.contains('?') { "&" } else { "?" };
-                    let ping_url = format!(
-                        "{}{}v={}&id={}",
-                        base_url,
-                        sep,
-                        urlencoding::encode(&version),
-                        urlencoding::encode(&anon_id)
-                    );
-                    let _ = reqwest::blocking::get(ping_url);
-                });
-            }
-        }
-    }
-}
 
 fn setup_tray(app: &App, hide_tray: bool) {
     use tauri::menu::{Menu, MenuItem};
@@ -1127,6 +791,18 @@ pub fn handle_global_shortcut(app: &AppHandle, shortcut: &tauri_plugin_global_sh
 }
 
 pub fn handle_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
+    // Settings window closed -> allow main window to auto-hide again.
+    // This pairs with the frontend setting IGNORE_BLUR=true while settings is open.
+    if window.label() == "settings" {
+        match event {
+            tauri::WindowEvent::CloseRequested { .. }
+            | tauri::WindowEvent::Destroyed => {
+                crate::global_state::IGNORE_BLUR.store(false, Ordering::Relaxed);
+            }
+            _ => {}
+        }
+        return;
+    }
     match event {
         tauri::WindowEvent::Focused(focused) => {
             if window.label() != "main" {
@@ -1223,13 +899,30 @@ fn persist_window_size(window: &tauri::Window, width: u32, height: u32) {
     });
 }
 
+fn is_settings_window_visible(app_handle: &tauri::AppHandle) -> bool {
+    use tauri::Manager;
+    if let Some(settings_window) = app_handle.get_webview_window("settings") {
+        if settings_window.is_visible().unwrap_or(false) {
+            return true;
+        }
+        // Window exists but not yet visible (just created) -> still treat as open
+        // to avoid racing the main-window blur handler.
+        if settings_window.is_minimized().unwrap_or(false) == false {
+            // Fall back to checking focusability as "exists"; if the window object
+            // exists at all, settings was just opened.
+            return true;
+        }
+    }
+    false
+}
+
 fn handle_blur(window: &tauri::Window) {
     if IGNORE_BLUR.load(Ordering::Relaxed) || WINDOW_PINNED.load(Ordering::Relaxed) {
         return;
     }
 
-    let settings = window.app_handle().state::<SettingsState>();
-    if settings.edge_docking.load(Ordering::Relaxed) {
+    // Keep main window visible while the standalone settings window is open.
+    if is_settings_window_visible(window.app_handle()) {
         return;
     }
 
@@ -1268,6 +961,9 @@ fn handle_blur(window: &tauri::Window) {
             };
         if !down && matches!(w.is_focused(), Ok(false)) {
             if !IGNORE_BLUR.load(Ordering::Relaxed) && !WINDOW_PINNED.load(Ordering::Relaxed) {
+                if is_settings_window_visible(w.app_handle()) {
+                    return;
+                }
                 let _ = w.hide();
                 NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
                 release_win_keys();

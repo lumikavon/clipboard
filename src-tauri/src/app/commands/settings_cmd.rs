@@ -107,9 +107,11 @@ pub fn save_setting(
 ) -> AppResult<()> {
     match key.as_str() {
         "app.arrow_key_selection" => {
+            // Arrow key selection setting removed: always enabled.
+            value = "true".to_string();
             settings_state
                 .arrow_key_selection
-                .store(value == "true", Ordering::Relaxed);
+                .store(true, Ordering::Relaxed);
         }
         "app.sequential_mode" => {
             settings_state
@@ -157,9 +159,11 @@ pub fn save_setting(
                 .store(value == "true", Ordering::Relaxed);
         }
         "app.edge_docking" => {
+            // Edge docking feature removed: always store false.
+            value = "false".to_string();
             settings_state
                 .edge_docking
-                .store(value == "true", Ordering::Relaxed);
+                .store(false, Ordering::Relaxed);
         }
         "app.follow_mouse" => {
             settings_state
@@ -237,7 +241,9 @@ pub fn set_arrow_key_selection(
     state: State<'_, crate::app_state::SettingsState>,
     enabled: bool,
 ) -> AppResult<()> {
-    state.arrow_key_selection.store(enabled, Ordering::Relaxed);
+    // Arrow key selection setting removed: always enabled.
+    let _ = enabled;
+    state.arrow_key_selection.store(true, Ordering::Relaxed);
     Ok(())
 }
 
@@ -408,13 +414,6 @@ pub fn reset_settings(
         seed_defaults(&conn).map_err(AppError::from)?;
     }
 
-    let machine_id = crate::app::system::get_machine_id();
-    let new_id = format!("{}-0000-0000-0000-000000000000", machine_id);
-    state
-        .settings_repo
-        .set("app.anon_id", &new_id)
-        .map_err(AppError::from)?;
-
     let main_hotkey = state
         .settings_repo
         .get("app.hotkey")
@@ -501,11 +500,13 @@ pub fn set_edge_docking(
     state: State<'_, crate::app_state::SettingsState>,
     enabled: bool,
 ) -> AppResult<()> {
-    state.edge_docking.store(enabled, Ordering::Relaxed);
+    // Edge docking feature removed: force disabled for backward compatibility.
+    let _ = enabled;
+    state.edge_docking.store(false, Ordering::Relaxed);
     let db_state = app_handle.state::<DbState>();
     db_state
         .settings_repo
-        .set("app.edge_docking", &enabled.to_string())
+        .set("app.edge_docking", "false")
         .map_err(AppError::from)
 }
 

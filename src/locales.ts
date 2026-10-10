@@ -13,6 +13,8 @@ export const translations = {
         // Header
         settings: "设置",
         app_name: "剪切板",
+        open_devtools: "打开开发者工具 (Devtools)",
+        devtools_unavailable: "当前构建未启用开发者工具，请使用带 devtools 特性的构建。",
         clear_history: "清空历史",
         hide: "隐藏",
         scroll_to_top: "回到顶部",
@@ -513,6 +515,8 @@ export const translations = {
         // Header
         settings: "Settings",
         app_name: "Clipboard",
+        open_devtools: "Open Devtools",
+        devtools_unavailable: "Devtools are not enabled in this build.",
         clear_history: "Clear History",
         hide: "Hide",
         scroll_to_top: "Back to top",
@@ -1017,6 +1021,8 @@ export const translations = {
         // Header
         settings: "設定",
         app_name: "剪貼板",
+        open_devtools: "開啟開發者工具 (Devtools)",
+        devtools_unavailable: "目前建置未啟用開發者工具。",
         clear_history: "清空歷史",
         hide: "隱藏",
         scroll_to_top: "回到頂部",

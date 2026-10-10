@@ -57,6 +57,10 @@ const AppHeader = ({
   setTypeFilter,
   onBack
 }: AppHeaderProps) => {
+  // Search box is always shown (setting removed); emoji entry is always shown
+  // (toggle removed). Props retained for compatibility.
+  void showSearchBox;
+  void emojiPanelEnabled;
   const getTypeName = (type: string) => {
     switch (type) {
       case "code": return t('type_code');
@@ -108,11 +112,9 @@ const AppHeader = ({
             <button className="btn-icon" title={t('clear_history')} onClick={clearHistory}>
               <Trash2 size={16} />
             </button>
-            {emojiPanelEnabled && (
-              <button className="btn-icon" title={t('emoji_panel') || '表情包'} onClick={() => setShowEmojiPanel(true)}>
-                <Smile size={16} />
-              </button>
-            )}
+            <button className="btn-icon" title={t('emoji_panel') || '表情包'} onClick={() => setShowEmojiPanel(true)}>
+              <Smile size={16} />
+            </button>
             <button className="btn-icon" title={t('settings')} onClick={() => setShowSettings(true)}>
               <SettingsIcon size={16} />
             </button>
@@ -128,7 +130,7 @@ const AppHeader = ({
 
     {!showSettings && !showEmojiPanel && (
       <AnimatePresence>
-        {(showSearchBox || search.trim().length > 0) && (
+        {
           <motion.div
             initial={{ height: 0, opacity: 0, overflow: 'hidden' }}
             animate={{
@@ -212,7 +214,7 @@ const AppHeader = ({
 
             </div>
           </motion.div>
-        )}
+        }
       </AnimatePresence>
     )}
   </header>

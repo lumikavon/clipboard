@@ -327,9 +327,11 @@ pub unsafe extern "system" fn keyboard_proc(
             if IS_HIDDEN.load(Ordering::Relaxed) {
                 return CallNextHookEx(None, n_code, w_param, l_param);
             }
+            // Arrow key selection setting removed: always enabled.
             let allow_navigation = if let Some(handle) = GLOBAL_APP_HANDLE.get() {
                 let settings = handle.state::<SettingsState>();
-                settings.arrow_key_selection.load(Ordering::Relaxed)
+                let _ = settings.arrow_key_selection.load(Ordering::Relaxed);
+                true
             } else {
                 true
             };
@@ -421,6 +423,15 @@ pub unsafe extern "system" fn mouse_proc(n_code: i32, w_param: WPARAM, l_param: 
             // Click Elsewhere to Hide Logic
             if msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN {
                 if let Some(handle) = GLOBAL_APP_HANDLE.get() {
+                    // Keep main window visible while settings window is open.
+                    if let Some(settings_window) = handle.get_webview_window("settings") {
+                        if settings_window.is_visible().unwrap_or(false) {
+                            return CallNextHookEx(None, n_code, w_param, l_param);
+                        }
+                        // Settings window object exists (just opened) -> don't hide main.
+                        // get_webview_window returns Some only when the window exists.
+                        return CallNextHookEx(None, n_code, w_param, l_param);
+                    }
                     if let Some(window) = handle.get_webview_window("main") {
                         if !IGNORE_BLUR.load(Ordering::Relaxed) {
                             let mouse_struct = *(l_param.0 as *const MSLLHOOKSTRUCT);

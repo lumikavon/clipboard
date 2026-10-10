@@ -6,6 +6,20 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, Theme, WebviewWindow};
 use tauri_plugin_notification::NotificationExt;
 
+#[tauri::command]
+pub fn open_devtools(window: WebviewWindow) -> Result<(), String> {
+    #[cfg(any(debug_assertions, feature = "devtools"))]
+    {
+        window.open_devtools();
+        Ok(())
+    }
+    #[cfg(not(any(debug_assertions, feature = "devtools")))]
+    {
+        let _ = window;
+        Err("Devtools are unavailable in this build. Rebuild with --features devtools.".to_string())
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct PlatformInfo {
     pub platform: String,

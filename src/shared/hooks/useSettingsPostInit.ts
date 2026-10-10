@@ -150,7 +150,10 @@ export const useSettingsPostInit = ({
       if (Number.isFinite(next)) setClipboardItemFontSize(next);
     }
     if (settings["app.emoji_panel_enabled"] !== undefined) {
-      setEmojiPanelEnabled(settings["app.emoji_panel_enabled"] === "true");
+      // Emoji toggle removed: always enabled.
+      setEmojiPanelEnabled(true);
+    } else {
+      setEmojiPanelEnabled(true);
     }
     if (settings["app.emoji_panel_tab"] === "favorites" || settings["app.emoji_panel_tab"] === "emoji") {
       setEmojiPanelTab(settings["app.emoji_panel_tab"] as "emoji" | "favorites");
@@ -237,19 +240,22 @@ export const useSettingsPostInit = ({
     setMoveToTopAfterPaste(settings["app.move_to_top_after_paste"] !== "false");
     setHideTrayIcon(settings["app.hide_tray_icon"] === "true");
     setHideDockIcon(settings["app.hide_dock_icon"] === "true");
-    const edgeDockingEnabled = settings["app.edge_docking"] === "true";
-    setEdgeDocking(edgeDockingEnabled);
+    // Edge docking removed: always disabled.
+    setEdgeDocking(false);
 
-    if (settings["app.show_search_box"] === "false") setShowSearchBox(false);
+    // Search box setting removed: always shown.
+    setShowSearchBox(true);
     setScrollTopButtonEnabled(settings["app.show_scroll_top_button"] !== "false");
-    if (settings["app.arrow_key_selection"] === "false") setArrowKeySelection(false);
+    // Arrow key selection setting removed: always enabled.
+    setArrowKeySelection(true);
 
     if (settings["app.sequential_hotkey"]) setSequentialHotkey(settings["app.sequential_hotkey"]);
     if (settings["app.rich_paste_hotkey"]) setRichPasteHotkey(settings["app.rich_paste_hotkey"]);
     if (settings["app.search_hotkey"] !== undefined) setSearchHotkey(settings["app.search_hotkey"]);
     setQuickPasteModifier(normalizeQuickPasteModifier(settings["app.quick_paste_modifier"]));
     if (settings["app.sequential_mode"] === "true") setSequentialModeState(true);
-    if (settings["app.sound_enabled"] === "true") setSoundEnabled(true);
+    // Sound effects removed: always disabled.
+    setSoundEnabled(false);
     setPasteSoundEnabled(settings["app.sound_paste_enabled"] !== "false");
     if (settings["app.sound_volume"]) {
       setSoundVolume(parseFloat(settings["app.sound_volume"]) || 1.0);
