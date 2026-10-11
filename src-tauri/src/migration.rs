@@ -1,6 +1,45 @@
 use std::fs;
 use std::path::PathBuf;
 
+/// Identifier rename migration: com.tiez -> com.clipboard
+/// Moves the whole data directory (DB, settings, window state) to the new
+/// identifier folder on first startup so existing users keep their data.
+pub fn perform_migration_identifier(default_app_dir: &PathBuf) {
+    let Some(parent) = default_app_dir.parent() else {
+        return;
+    };
+    let old_app_dir = parent.join("com.tiez");
+    if !old_app_dir.exists() || !old_app_dir.is_dir() {
+        return;
+    }
+    // New dir already populated (e.g. second startup): only pull datapath.txt if missing.
+    let new_redirect = default_app_dir.join("datapath.txt");
+    let old_redirect = old_app_dir.join("datapath.txt");
+    if default_app_dir.exists() {
+        if !new_redirect.exists() && old_redirect.exists() {
+            let _ = fs::copy(&old_redirect, &new_redirect);
+        }
+        return;
+    }
+    println!(
+        ">>> [MIGRATION] Renaming data folder 'com.tiez' to 'com.clipboard'..."
+    );
+    if std::fs::rename(&old_app_dir, &default_app_dir).is_ok() {
+        println!(">>> [MIGRATION] Data folder migrated to 'com.clipboard'.");
+    } else {
+        println!(">>> [MIGRATION] Rename failed, copying database instead...");
+        let _ = fs::create_dir_all(&default_app_dir);
+        let old_db = old_app_dir.join("clipboard.db");
+        let new_db = default_app_dir.join("clipboard.db");
+        if old_db.exists() && !new_db.exists() {
+            let _ = fs::copy(&old_db, &new_db);
+        }
+        if old_redirect.exists() && !new_redirect.exists() {
+            let _ = fs::copy(&old_redirect, &new_redirect);
+        }
+    }
+}
+
 /// v0.2.8 Rename Migration: 贴汁 -> TieZ
 pub fn perform_migration_v028(default_app_dir: &PathBuf) {
     // Check multiple possible locations for old data folder

@@ -1,4 +1,3 @@
-use crate::app_state::SettingsState;
 use crate::database::DbState;
 use crate::error::{AppError, AppResult};
 use crate::infrastructure::repository::settings_repo::SettingsRepository;
@@ -14,74 +13,6 @@ fn normalize_quick_paste_modifier(value: &str) -> &'static str {
         "win" => "win",
         _ => "disabled",
     }
-}
-
-#[tauri::command]
-pub fn set_sequential_mode(
-    app_handle: AppHandle,
-    state: State<'_, crate::app_state::SettingsState>,
-    enabled: bool,
-) {
-    state.sequential_mode.store(enabled, Ordering::Relaxed);
-    let db_state = app_handle.state::<DbState>();
-    let _ = db_state
-        .settings_repo
-        .set("app.sequential_mode", &enabled.to_string());
-    let _ = crate::app::commands::hotkey_cmd::sync_registered_hotkeys(&app_handle);
-}
-
-#[tauri::command]
-pub fn set_sequential_hotkey(
-    app_handle: AppHandle,
-    state: State<'_, SettingsState>,
-    hotkey: String,
-) -> AppResult<()> {
-    if let Ok(mut guard) = state.sequential_paste_hotkey.lock() {
-        *guard = hotkey.clone();
-    }
-
-    let db_state = app_handle.state::<DbState>();
-    db_state
-        .settings_repo
-        .set("app.sequential_hotkey", &hotkey)
-        .map_err(AppError::from)?;
-    crate::app::commands::hotkey_cmd::sync_registered_hotkeys(&app_handle)
-}
-
-#[tauri::command]
-pub fn set_rich_paste_hotkey(
-    app_handle: AppHandle,
-    state: State<'_, SettingsState>,
-    hotkey: String,
-) -> AppResult<()> {
-    if let Ok(mut guard) = state.rich_paste_hotkey.lock() {
-        *guard = hotkey.clone();
-    }
-
-    let db_state = app_handle.state::<DbState>();
-    db_state
-        .settings_repo
-        .set("app.rich_paste_hotkey", &hotkey)
-        .map_err(AppError::from)?;
-    crate::app::commands::hotkey_cmd::sync_registered_hotkeys(&app_handle)
-}
-
-#[tauri::command]
-pub fn set_search_hotkey(
-    app_handle: AppHandle,
-    state: State<'_, SettingsState>,
-    hotkey: String,
-) -> AppResult<()> {
-    if let Ok(mut guard) = state.search_hotkey.lock() {
-        *guard = hotkey.clone();
-    }
-
-    let db_state = app_handle.state::<DbState>();
-    db_state
-        .settings_repo
-        .set("app.search_hotkey", &hotkey)
-        .map_err(AppError::from)?;
-    crate::app::commands::hotkey_cmd::sync_registered_hotkeys(&app_handle)
 }
 
 #[tauri::command]
@@ -114,9 +45,11 @@ pub fn save_setting(
                 .store(true, Ordering::Relaxed);
         }
         "app.sequential_mode" => {
+            // Sequential paste mode removed: always disabled.
+            value = "false".to_string();
             settings_state
                 .sequential_mode
-                .store(value == "true", Ordering::Relaxed);
+                .store(false, Ordering::Relaxed);
         }
         "app.sound_enabled" => {
             settings_state
@@ -300,19 +233,6 @@ pub fn set_silent_start(
 }
 
 #[tauri::command]
-pub fn set_delete_after_paste(
-    state: State<'_, crate::app_state::SettingsState>,
-    db_state: State<'_, DbState>,
-    enabled: bool,
-) -> AppResult<()> {
-    state.delete_after_paste.store(enabled, Ordering::Relaxed);
-    db_state
-        .settings_repo
-        .set("app.delete_after_paste", &enabled.to_string())
-        .map_err(AppError::from)
-}
-
-#[tauri::command]
 pub fn set_privacy_protection(
     state: State<'_, crate::app_state::SettingsState>,
     db_state: State<'_, DbState>,
@@ -417,19 +337,8 @@ pub fn reset_settings(
     let main_hotkey = state
         .settings_repo
         .get("app.hotkey")
-        .unwrap_or(Some("Alt+C".to_string()))
-        .unwrap_or("Alt+C".to_string());
-    let sequential_mode = state
-        .settings_repo
-        .get("app.sequential_mode")
-        .unwrap_or(Some("false".to_string()))
-        .map(|v| v == "true")
-        .unwrap_or(false);
-    let seq_hotkey = state
-        .settings_repo
-        .get("app.sequential_hotkey")
-        .unwrap_or(Some("Alt+V".to_string()))
-        .unwrap_or("Alt+V".to_string());
+        .unwrap_or(Some("Ctrl+Shift+V".to_string()))
+        .unwrap_or("Ctrl+Shift+V".to_string());
     let rich_hotkey = state
         .settings_repo
         .get("app.rich_paste_hotkey")
@@ -446,16 +355,9 @@ pub fn reset_settings(
         .unwrap_or(Some("disabled".to_string()))
         .unwrap_or("disabled".to_string());
 
-    settings_state
-        .sequential_mode
-        .store(sequential_mode, Ordering::Relaxed);
     {
         let mut guard = settings_state.main_hotkey.lock().unwrap();
         *guard = main_hotkey.clone();
-    }
-    {
-        let mut guard = settings_state.sequential_paste_hotkey.lock().unwrap();
-        *guard = seq_hotkey.clone();
     }
     {
         let mut guard = settings_state.rich_paste_hotkey.lock().unwrap();
@@ -475,23 +377,6 @@ pub fn reset_settings(
     }
 
     crate::app::commands::hotkey_cmd::sync_registered_hotkeys(&app)
-}
-
-#[tauri::command]
-pub fn set_tray_visible(
-    app_handle: AppHandle,
-    state: State<'_, crate::app_state::SettingsState>,
-    visible: bool,
-) -> AppResult<()> {
-    state.hide_tray_icon.store(!visible, Ordering::Relaxed);
-    if let Some(tray) = app_handle.tray_by_id("main_tray") {
-        let _ = tray.set_visible(visible);
-    }
-    let db_state = app_handle.state::<DbState>();
-    db_state
-        .settings_repo
-        .set("app.hide_tray_icon", &(!visible).to_string())
-        .map_err(AppError::from)
 }
 
 #[tauri::command]

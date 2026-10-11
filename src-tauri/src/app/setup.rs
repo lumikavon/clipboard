@@ -18,7 +18,7 @@ use crate::services::encryption_queue::init_encryption_queue;
 use std::ptr::null_mut;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
-use tauri::{App, AppHandle, Emitter, Manager};
+use tauri::{App, AppHandle, Manager};
 #[cfg(target_os = "windows")]
 use windows::Win32::Foundation::{HINSTANCE, HWND};
 #[cfg(target_os = "windows")]
@@ -88,7 +88,7 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     start_services(app, &settings, app_handle.clone());
 
     // 8. Tray Setup
-    setup_tray(app, settings.hide_tray_icon);
+    setup_tray(app, false);
 
     // 9. Theme Initial Application
     apply_initial_theme(app);
@@ -107,6 +107,8 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
 fn resolve_data_dir(app: &App) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let default_app_dir = app.path().app_data_dir()?;
 
+    // Identifier rename: com.tiez -> com.clipboard (keep existing user data).
+    crate::migration::perform_migration_identifier(&default_app_dir);
     // Perform migration if needed
     crate::migration::perform_migration_v028(&default_app_dir);
 
@@ -212,9 +214,9 @@ fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
             .unwrap_or(true),
         capture_rich_text: repo
             .get("app.capture_rich_text")
-            .unwrap_or(Some("false".to_string()))
-            .map(|v| v == "true")
-            .unwrap_or(false),
+            .unwrap_or(Some("true".to_string()))
+            .map(|v| v != "false")
+            .unwrap_or(true),
         deduplicate: repo
             .get("app.deduplicate")
             .unwrap_or(Some("true".to_string()))
@@ -251,15 +253,8 @@ fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
             .get("app.app_cleanup_policies")
             .unwrap_or(Some("[]".to_string()))
             .unwrap_or("[]".to_string()),
-        sequential_mode: repo
-            .get("app.sequential_mode")
-            .unwrap_or(Some("false".to_string()))
-            .map(|v| v == "true")
-            .unwrap_or(false),
-        sequential_hotkey: repo
-            .get("app.sequential_hotkey")
-            .unwrap_or(Some("Alt+V".to_string()))
-            .unwrap_or("Alt+V".to_string()),
+        sequential_mode: false,
+        sequential_hotkey: String::new(),
         rich_paste_hotkey: repo
             .get("app.rich_paste_hotkey")
             .unwrap_or(Some("Ctrl+Shift+Z".to_string()))
@@ -308,8 +303,8 @@ fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
             .and_then(|v| v.parse::<u32>().ok()),
         main_hotkey: repo
             .get("app.hotkey")
-            .unwrap_or(Some("Win+V".to_string()))
-            .unwrap_or("Win+V".to_string()),
+            .unwrap_or(Some("Ctrl+Shift+V".to_string()))
+            .unwrap_or("Ctrl+Shift+V".to_string()),
         arrow_key_selection: repo
             .get("app.arrow_key_selection")
             .map(|_| true)
@@ -602,7 +597,8 @@ fn start_edge_docking_monitor(_app_handle: AppHandle) {
 #[cfg(not(target_os = "windows"))]
 fn start_edge_docking_monitor(_app_handle: AppHandle) {}
 
-fn setup_tray(app: &App, hide_tray: bool) {
+fn setup_tray(app: &App, _hide_tray: bool) {
+    let _ = _hide_tray;
     use tauri::menu::{Menu, MenuItem};
     use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
 
@@ -646,7 +642,7 @@ fn setup_tray(app: &App, hide_tray: bool) {
         .build(app)
         .expect("Failed to build tray");
 
-    let _ = tray.set_visible(!hide_tray);
+    let _ = tray.set_visible(true);
     app.manage(tray);
 }
 
@@ -746,46 +742,6 @@ pub fn handle_global_shortcut(app: &AppHandle, shortcut: &tauri_plugin_global_sh
         if shortcut == &main_s {
             toggle_window(app);
             return;
-        }
-    }
-
-    if let Ok(seq_s) = {
-        let val = settings.sequential_paste_hotkey.lock().unwrap().clone();
-        val.replace("Win", "Super").parse::<Shortcut>()
-    } {
-        if shortcut == &seq_s {
-            let is_seq = settings.sequential_mode.load(Ordering::Relaxed);
-            let has_items = {
-                let q_notification = app.state::<PasteQueue>().inner().0.lock().unwrap();
-                !q_notification.items.is_empty()
-            };
-            if is_seq || has_items {
-                tauri::async_runtime::spawn({
-                    let app = app.clone();
-                    async move {
-                        crate::services::paste_queue::paste_next_step(app).await;
-                    }
-                });
-            }
-        }
-    }
-
-    if let Ok(rich_s) = {
-        let val = settings.rich_paste_hotkey.lock().unwrap().clone();
-        val.replace("Win", "Super").parse::<Shortcut>()
-    } {
-        if shortcut == &rich_s {
-            crate::services::clipboard_ops::paste_latest_rich(app.clone());
-        }
-    }
-
-    if let Ok(search_s) = {
-        let val = settings.search_hotkey.lock().unwrap().clone();
-        val.replace("Win", "Super").parse::<Shortcut>()
-    } {
-        if shortcut == &search_s {
-            toggle_window(app);
-            let _ = app.emit("focus-search-input", ());
         }
     }
 }

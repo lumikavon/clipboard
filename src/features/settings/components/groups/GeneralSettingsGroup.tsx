@@ -17,13 +17,8 @@ interface GeneralSettingsGroupProps {
     setAutoStart: (val: boolean) => void;
     silentStart: boolean;
     setSilentStart: (val: boolean) => void;
-    hideTrayIcon: boolean;
-    setHideTrayIcon: (val: boolean) => void;
     hideDockIcon: boolean;
     setHideDockIcon: (val: boolean) => void;
-    scrollTopButtonEnabled: boolean;
-    setScrollTopButtonEnabled: (val: boolean) => void;
-    saveAppSetting: (key: string, val: string) => void;
 }
 
 const GeneralSettingsGroup = ({
@@ -33,13 +28,8 @@ const GeneralSettingsGroup = ({
     setAutoStart,
     silentStart,
     setSilentStart,
-    hideTrayIcon,
-    setHideTrayIcon,
     hideDockIcon,
     setHideDockIcon,
-    scrollTopButtonEnabled,
-    setScrollTopButtonEnabled,
-    saveAppSetting
 }: GeneralSettingsGroupProps) => (
     <div className="settings-group">
         <div className="group-content">
@@ -56,25 +46,6 @@ const GeneralSettingsGroup = ({
                             const enabled = e.target.checked;
                             setAutoStart(enabled);
                             invoke("toggle_autostart", { enabled }).catch(console.error);
-                        }}
-                    />
-                    <div className="toggle"><div className="left" /><div className="right" /></div>
-                </label>
-            </div>
-
-            <div className="setting-item">
-                <div className="item-label-group">
-                    <span className="item-label">{t('hide_tray_icon')}</span>
-                </div>
-                <label className="switch">
-                    <input
-                        className="cb"
-                        type="checkbox"
-                        checked={hideTrayIcon}
-                        onChange={(e) => {
-                            const val = e.target.checked;
-                            setHideTrayIcon(val);
-                            invoke("set_tray_visible", { visible: !val }).catch(console.error);
                         }}
                     />
                     <div className="toggle"><div className="left" /><div className="right" /></div>
@@ -119,26 +90,6 @@ const GeneralSettingsGroup = ({
                             const enabled = e.target.checked;
                             setSilentStart(enabled);
                             invoke("set_silent_start", { enabled }).catch(console.error);
-                        }}
-                    />
-                    <div className="toggle"><div className="left" /><div className="right" /></div>
-                </label>
-            </div>
-            <div className="setting-item no-border">
-                <LabelWithHint
-                    label={t('scroll_top_button')}
-                    hint={t('scroll_top_button_hint')}
-                    hintKey="scroll_top_button"
-                />
-                <label className="switch">
-                    <input
-                        className="cb"
-                        type="checkbox"
-                        checked={scrollTopButtonEnabled}
-                        onChange={(e) => {
-                            const enabled = e.target.checked;
-                            setScrollTopButtonEnabled(enabled);
-                            saveAppSetting('show_scroll_top_button', String(enabled));
                         }}
                     />
                     <div className="toggle"><div className="left" /><div className="right" /></div>

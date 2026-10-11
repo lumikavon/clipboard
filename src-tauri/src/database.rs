@@ -180,15 +180,15 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         [],
     );
     let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.persistent', 'false')",
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.persistent', 'true')",
         [],
     );
     let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.capture_files', 'false')",
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.capture_files', 'true')",
         [],
     );
     let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.capture_rich_text', 'false')",
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.capture_rich_text', 'true')",
         [],
     );
     let _ = conn.execute(
@@ -275,7 +275,7 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         [],
     );
     let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.hotkey', 'Alt+C')",
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.hotkey', 'Ctrl+Shift+V')",
         [],
     );
     let _ = conn.execute(

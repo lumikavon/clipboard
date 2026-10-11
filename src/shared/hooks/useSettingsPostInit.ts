@@ -1,34 +1,6 @@
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { AppCleanupPolicy } from "../../features/settings/types";
-import type { QuickPasteModifier } from "../../features/app/types";
-
-const QUICK_PASTE_MODIFIERS = new Set<QuickPasteModifier>([
-  "disabled",
-  "ctrl",
-  "alt",
-  "shift",
-  "win"
-]);
-
-const normalizeQuickPasteModifier = (value?: string): QuickPasteModifier => {
-  const normalized = value?.trim().toLowerCase();
-
-  switch (normalized) {
-    case "control":
-      return "ctrl";
-    case "option":
-      return "alt";
-    case "command":
-    case "meta":
-    case "super":
-      return "win";
-    default:
-      return normalized && QUICK_PASTE_MODIFIERS.has(normalized as QuickPasteModifier)
-        ? (normalized as QuickPasteModifier)
-        : "disabled";
-  }
-};
 
 interface UseSettingsPostInitOptions {
   settings: Record<string, string> | null;
@@ -57,19 +29,11 @@ interface UseSettingsPostInitOptions {
   setPasteMethod: (val: string) => void;
   setShowSourceAppIcon: (val: boolean) => void;
 
-  setDeleteAfterPaste: (val: boolean) => void;
   setMoveToTopAfterPaste: (val: boolean) => void;
-  setHideTrayIcon: (val: boolean) => void;
   setHideDockIcon: (val: boolean) => void;
   setEdgeDocking: (val: boolean) => void;
   setShowSearchBox: (val: boolean) => void;
-  setScrollTopButtonEnabled: (val: boolean) => void;
   setArrowKeySelection: (val: boolean) => void;
-  setSequentialHotkey: (val: string) => void;
-  setRichPasteHotkey: (val: string) => void;
-  setSearchHotkey: (val: string) => void;
-  setQuickPasteModifier: (val: QuickPasteModifier) => void;
-  setSequentialModeState: (val: boolean) => void;
   setSoundEnabled: (val: boolean) => void;
   setPasteSoundEnabled: (val: boolean) => void;
   setSoundVolume: (val: number) => void;
@@ -108,19 +72,11 @@ export const useSettingsPostInit = ({
   setPasteMethod,
   setShowSourceAppIcon,
 
-  setDeleteAfterPaste,
   setMoveToTopAfterPaste,
-  setHideTrayIcon,
   setHideDockIcon,
   setEdgeDocking,
   setShowSearchBox,
-  setScrollTopButtonEnabled,
   setArrowKeySelection,
-  setSequentialHotkey,
-  setRichPasteHotkey,
-  setSearchHotkey,
-  setQuickPasteModifier,
-  setSequentialModeState,
   setSoundEnabled,
   setPasteSoundEnabled,
   setSoundVolume,
@@ -236,24 +192,16 @@ export const useSettingsPostInit = ({
 
 
     // These have false as default, so check for 'true'
-    setDeleteAfterPaste(settings["app.delete_after_paste"] === "true");
     setMoveToTopAfterPaste(settings["app.move_to_top_after_paste"] !== "false");
-    setHideTrayIcon(settings["app.hide_tray_icon"] === "true");
     setHideDockIcon(settings["app.hide_dock_icon"] === "true");
     // Edge docking removed: always disabled.
     setEdgeDocking(false);
 
     // Search box setting removed: always shown.
     setShowSearchBox(true);
-    setScrollTopButtonEnabled(settings["app.show_scroll_top_button"] !== "false");
     // Arrow key selection setting removed: always enabled.
     setArrowKeySelection(true);
 
-    if (settings["app.sequential_hotkey"]) setSequentialHotkey(settings["app.sequential_hotkey"]);
-    if (settings["app.rich_paste_hotkey"]) setRichPasteHotkey(settings["app.rich_paste_hotkey"]);
-    if (settings["app.search_hotkey"] !== undefined) setSearchHotkey(settings["app.search_hotkey"]);
-    setQuickPasteModifier(normalizeQuickPasteModifier(settings["app.quick_paste_modifier"]));
-    if (settings["app.sequential_mode"] === "true") setSequentialModeState(true);
     // Sound effects removed: always disabled.
     setSoundEnabled(false);
     setPasteSoundEnabled(settings["app.sound_paste_enabled"] !== "false");
@@ -291,19 +239,11 @@ export const useSettingsPostInit = ({
     setPasteMethod,
     setShowSourceAppIcon,
 
-    setDeleteAfterPaste,
     setMoveToTopAfterPaste,
-    setHideTrayIcon,
     setHideDockIcon,
     setEdgeDocking,
     setShowSearchBox,
-    setScrollTopButtonEnabled,
     setArrowKeySelection,
-    setSequentialHotkey,
-    setRichPasteHotkey,
-    setSearchHotkey,
-    setQuickPasteModifier,
-    setSequentialModeState,
     setSoundEnabled,
     setPasteSoundEnabled,
     setSoundVolume,

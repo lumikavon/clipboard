@@ -1,7 +1,6 @@
 use crate::app_state::SettingsState;
 use crate::error::{AppError, AppResult};
 use crate::global_state::HOTKEY_STRING;
-use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
@@ -28,18 +27,6 @@ pub(crate) fn sync_registered_hotkeys(app_handle: &AppHandle) -> AppResult<()> {
 
     let main_hotkey = settings.main_hotkey.lock().unwrap().clone();
     register_shortcut(app_handle, &main_hotkey);
-
-    let sequential_mode = settings.sequential_mode.load(Ordering::Relaxed);
-    let sequential_hotkey = settings.sequential_paste_hotkey.lock().unwrap().clone();
-    if sequential_mode {
-        register_shortcut(app_handle, &sequential_hotkey);
-    }
-
-    let rich_hotkey = settings.rich_paste_hotkey.lock().unwrap().clone();
-    register_shortcut(app_handle, &rich_hotkey);
-
-    let search_hotkey = settings.search_hotkey.lock().unwrap().clone();
-    register_shortcut(app_handle, &search_hotkey);
 
     Ok(())
 }

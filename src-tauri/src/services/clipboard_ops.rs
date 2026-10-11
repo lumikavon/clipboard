@@ -383,10 +383,7 @@ pub async fn paste_history_item_by_index(
         return Ok(false);
     }
 
-    let delete_after_use = {
-        let settings = app_handle.state::<SettingsState>();
-        settings.delete_after_paste.load(Ordering::Relaxed)
-    };
+    let delete_after_use = false;
 
     copy_to_clipboard(
         app_handle.clone(),
@@ -1367,10 +1364,7 @@ fn play_paste_sound_if_enabled(app_handle: &tauri::AppHandle) {
 pub fn paste_latest_rich(app_handle: tauri::AppHandle) {
     let app_handle_clone = app_handle.clone();
     tauri::async_runtime::spawn(async move {
-        let delete_after = {
-            let settings = app_handle_clone.state::<SettingsState>();
-            settings.delete_after_paste.load(Ordering::Relaxed)
-        };
+        let delete_after = false;
 
         let history = crate::app::commands::history_cmd::get_clipboard_history(
             app_handle_clone.state::<DbState>(),

@@ -3,8 +3,6 @@ import type { ComponentType, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { getHotkeyDisplayTokens } from "../../../../shared/lib/hotkeyDisplay";
-import { isMacPlatform } from "../../../../shared/lib/platform";
-import type { QuickPasteModifier } from "../../../app/types";
 
 interface LabelWithHintProps {
     label: string;
@@ -30,27 +28,9 @@ interface ClipboardSettingsGroupProps {
     setCaptureRichText: (val: boolean) => void;
     richTextSnapshotPreview: boolean;
     setRichTextSnapshotPreview: (val: boolean) => void;
-    richPasteHotkey: string;
-    isRecordingRich: boolean;
-    setIsRecordingRich: (val: boolean) => void;
-    updateRichPasteHotkey: (key: string) => void;
-    searchHotkey: string;
-    isRecordingSearch: boolean;
-    setIsRecordingSearch: (val: boolean) => void;
-    updateSearchHotkey: (key: string) => void;
-    quickPasteModifier: QuickPasteModifier;
-    setQuickPasteModifier: (val: QuickPasteModifier) => void;
-    deleteAfterPaste: boolean;
-    setDeleteAfterPaste: (val: boolean) => void;
     moveToTopAfterPaste: boolean;
     setMoveToTopAfterPaste: (val: boolean) => void;
-    sequentialMode: boolean;
-    setSequentialModeState: (val: boolean) => void;
-    sequentialHotkey: string;
-    isRecordingSequential: boolean;
-    setIsRecordingSequential: (val: boolean) => void;
-    updateSequentialHotkey: (key: string) => void;
-    checkHotkeyConflict: (newHotkey: string, mode: 'main' | 'sequential' | 'rich' | 'search') => boolean;
+    checkHotkeyConflict: (newHotkey: string, mode: 'main') => boolean;
     privacyProtection: boolean;
     setPrivacyProtection: (val: boolean) => void;
     privacyProtectionKinds: string[];
@@ -78,21 +58,6 @@ interface ClipboardSettingsGroupProps {
 }
 
 const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
-    const quickPasteOptions: Array<{ value: QuickPasteModifier; label: string }> = isMacPlatform()
-        ? [
-            { value: "disabled", label: props.t("quick_paste_modifier_disabled") },
-            { value: "ctrl", label: "Control (⌃)" },
-            { value: "alt", label: "Option (⌥)" },
-            { value: "shift", label: "Shift (⇧)" },
-            { value: "win", label: "Command (⌘)" }
-        ]
-        : [
-            { value: "disabled", label: props.t("quick_paste_modifier_disabled") },
-            { value: "ctrl", label: props.t("quick_paste_modifier_ctrl") },
-            { value: "alt", label: props.t("quick_paste_modifier_alt") },
-            { value: "shift", label: props.t("quick_paste_modifier_shift") },
-            { value: "win", label: props.t("quick_paste_modifier_win") }
-        ];
     const [persistentLimitDraft, setPersistentLimitDraft] = useState(
         props.persistentLimit.toString()
     );
@@ -282,147 +247,6 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                         </label>
                     </div>
 
-
-                    <div className="setting-item">
-                        <div className="item-label-group">
-                            <span className="item-label">{props.t('rich_paste_hotkey_label')}</span>
-                            <span className="hint">{props.isRecordingRich ? props.t('hotkey_recording_esc') : props.t('hotkey_click_hint')}</span>
-                        </div>
-                        <div
-                            className={`key-group ${props.isRecordingRich ? 'recording' : ''}`}
-                            onClick={(e) => { props.setIsRecordingRich(true); e.currentTarget.focus(); }}
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                                if (!props.isRecordingRich) return;
-                                e.preventDefault();
-                                e.stopPropagation();
-
-                                if (e.key === 'Escape') {
-                                    props.setIsRecordingRich(false);
-                                    return;
-                                }
-
-                                if (e.key === 'Backspace' || e.key === 'Delete') {
-                                    props.updateRichPasteHotkey('');
-                                    props.setIsRecordingRich(false);
-                                    return;
-                                }
-
-                                const modifiers = [];
-                                if (e.ctrlKey) modifiers.push('Ctrl');
-                                if (e.shiftKey) modifiers.push('Shift');
-                                if (e.altKey) modifiers.push('Alt');
-                                if (e.metaKey) modifiers.push('Command');
-
-                                const key = e.key.toUpperCase();
-                                if (['CONTROL', 'SHIFT', 'ALT', 'META'].includes(key)) return;
-
-                                const newHotkey = [...modifiers, key].join('+');
-                                props.updateRichPasteHotkey(newHotkey);
-                            }}
-                        >
-                            {props.isRecordingRich ? (
-                                <div className="key-cap" style={{ width: '8em' }}>{props.t('waiting_for_input')}</div>
-                            ) : (
-                                renderHotkeyCaps(props.richPasteHotkey)
-                            )}
-                        </div>
-                    </div>
-                    <div className="setting-item">
-                        <div className="item-label-group">
-                            <span className="item-label">{props.t('search_hotkey_label')}</span>
-                            <span className="hint">{props.isRecordingSearch ? props.t('hotkey_recording_esc') : props.t('hotkey_click_hint')}</span>
-                        </div>
-                        <div
-                            className={`key-group ${props.isRecordingSearch ? 'recording' : ''}`}
-                            onClick={(e) => { props.setIsRecordingSearch(true); e.currentTarget.focus(); }}
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                                if (!props.isRecordingSearch) return;
-                                e.preventDefault();
-                                e.stopPropagation();
-
-                                if (e.key === 'Escape') {
-                                    props.setIsRecordingSearch(false);
-                                    return;
-                                }
-
-                                if (e.key === 'Backspace' || e.key === 'Delete') {
-                                    props.updateSearchHotkey('');
-                                    props.setIsRecordingSearch(false);
-                                    return;
-                                }
-
-                                const modifiers = [];
-                                if (e.ctrlKey) modifiers.push('Ctrl');
-                                if (e.shiftKey) modifiers.push('Shift');
-                                if (e.altKey) modifiers.push('Alt');
-                                if (e.metaKey) modifiers.push('Command');
-
-                                const key = e.key.toUpperCase();
-                                if (['CONTROL', 'SHIFT', 'ALT', 'META'].includes(key)) return;
-
-                                const newHotkey = [...modifiers, key].join('+');
-                                props.updateSearchHotkey(newHotkey);
-                            }}
-                        >
-                            {props.isRecordingSearch ? (
-                                <div className="key-cap" style={{ width: '8em' }}>{props.t('waiting_for_input')}</div>
-                            ) : (
-                                renderHotkeyCaps(props.searchHotkey)
-                            )}
-                        </div>
-                    </div>
-                    <div className="setting-item">
-                        <props.LabelWithHint
-                            label={props.t('quick_paste_modifier')}
-                            hint={props.t('quick_paste_modifier_hint')}
-                            hintKey="quick_paste_modifier"
-                        />
-                        <select
-                            value={props.quickPasteModifier}
-                            onChange={(e) => {
-                                const value = e.target.value as QuickPasteModifier;
-                                props.setQuickPasteModifier(value);
-                                invoke("set_quick_paste_modifier", { modifier: value }).catch(console.error);
-                            }}
-                            style={{
-                                padding: '4px 8px',
-                                borderRadius: '4px',
-                                border: '1px solid var(--border-color)',
-                                background: 'var(--input-bg)',
-                                color: 'var(--text-color)',
-                                fontSize: '14px',
-                                minWidth: '140px'
-                            }}
-                        >
-                            {quickPasteOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="setting-item">
-                        <props.LabelWithHint
-                            label={props.t('delete_after_paste')}
-                            hint={props.t('delete_after_paste_hint')}
-                            hintKey="delete_after_paste"
-                        />
-                        <label className="switch">
-                            <input
-                                className="cb"
-                                type="checkbox"
-                                checked={props.deleteAfterPaste}
-                                onChange={(e) => {
-                                    const val = e.target.checked;
-                                    props.setDeleteAfterPaste(val);
-                                    props.saveAppSetting('delete_after_paste', String(val));
-                                }}
-                            />
-                            <div className="toggle"><div className="left" /><div className="right" /></div>
-                        </label>
-                    </div>
                     <div className="setting-item">
                         <props.LabelWithHint
                             label={props.t('move_to_top_after_paste')}
@@ -444,80 +268,6 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                         </label>
                     </div>
                     {/* macOS cleanup: Removed Paste Method selection */}
-                    <div className="setting-item">
-                        <props.LabelWithHint
-                            label={props.t('sequential_paste_mode')}
-                            hint={props.t('sequential_paste_hint')}
-                            hintKey="sequential_paste_mode"
-                        />
-                        <label className="switch">
-                            <input
-                                className="cb"
-                                type="checkbox"
-                                checked={props.sequentialMode}
-                                onChange={(e) => {
-                                    const val = e.target.checked;
-                                    props.setSequentialModeState(val);
-                                    invoke('set_sequential_mode', { enabled: val }).catch(console.error);
-                                    if (val) {
-                                        if (props.checkHotkeyConflict(props.sequentialHotkey, 'sequential')) {
-                                            props.updateSequentialHotkey("");
-                                        }
-                                    }
-                                }}
-                            />
-                            <div className="toggle"><div className="left" /><div className="right" /></div>
-                        </label>
-                    </div>
-
-                    {props.sequentialMode && (
-                        <div className="setting-item">
-                            <div className="item-label-group">
-                                <span className="item-label">{props.t('sequential_paste_hotkey_label')}</span>
-                                <span className="hint">{props.isRecordingSequential ? props.t('hotkey_recording_esc') : props.t('hotkey_click_hint')}</span>
-                            </div>
-                            <div
-                                className={`key-group ${props.isRecordingSequential ? 'recording' : ''}`}
-                                onClick={(e) => { props.setIsRecordingSequential(true); e.currentTarget.focus(); }}
-                                tabIndex={0}
-                                onKeyDown={(e) => {
-                                    if (!props.isRecordingSequential) return;
-                                    e.preventDefault();
-                                    e.stopPropagation();
-
-                                    if (e.key === 'Escape') {
-                                        props.setIsRecordingSequential(false);
-                                        return;
-                                    }
-
-                                    if (e.key === 'Backspace' || e.key === 'Delete') {
-                                        props.updateSequentialHotkey('');
-                                        props.setIsRecordingSequential(false);
-                                        return;
-                                    }
-
-                                    const modifiers = [];
-                                    if (e.ctrlKey) modifiers.push('Ctrl');
-                                    if (e.shiftKey) modifiers.push('Shift');
-                                    if (e.altKey) modifiers.push('Alt');
-                                    if (e.metaKey) modifiers.push('Command');
-
-                                    const key = e.key.toUpperCase();
-                                    if (['CONTROL', 'SHIFT', 'ALT', 'META'].includes(key)) return;
-
-                                    const newHotkey = [...modifiers, key].join('+');
-                                    props.updateSequentialHotkey(newHotkey);
-                                }}
-                            >
-                                {props.isRecordingSequential ? (
-                                    <div className="key-cap" style={{ width: '8em' }}>{props.t('waiting_for_input')}</div>
-                                ) : (
-                                    renderHotkeyCaps(props.sequentialHotkey)
-                                )}
-                            </div>
-                        </div>
-                    )}
-
                     <div className="setting-item">
                         <props.LabelWithHint
                             label={props.t('privacy_protection')}

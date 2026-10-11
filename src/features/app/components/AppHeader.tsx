@@ -6,7 +6,6 @@ import {
   PinOff,
   Search,
   Settings as SettingsIcon,
-  Smile,
   Trash2,
   X
 } from "lucide-react";
@@ -57,10 +56,11 @@ const AppHeader = ({
   setTypeFilter,
   onBack
 }: AppHeaderProps) => {
-  // Search box is always shown (setting removed); emoji entry is always shown
-  // (toggle removed). Props retained for compatibility.
+  // Search box is always shown (setting removed); emoji entry button removed.
+  // Props retained for compatibility.
   void showSearchBox;
   void emojiPanelEnabled;
+  void setShowEmojiPanel;
   const getTypeName = (type: string) => {
     switch (type) {
       case "code": return t('type_code');
@@ -111,9 +111,6 @@ const AppHeader = ({
           <>
             <button className="btn-icon" title={t('clear_history')} onClick={clearHistory}>
               <Trash2 size={16} />
-            </button>
-            <button className="btn-icon" title={t('emoji_panel') || '表情包'} onClick={() => setShowEmojiPanel(true)}>
-              <Smile size={16} />
             </button>
             <button className="btn-icon" title={t('settings')} onClick={() => setShowSettings(true)}>
               <SettingsIcon size={16} />

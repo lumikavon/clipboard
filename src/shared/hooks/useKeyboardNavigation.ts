@@ -3,7 +3,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { RefObject } from "react";
-import { matchesHotkey } from "./useHotkeyMatching";
 import { useWindowVisibility } from "./useWindowVisibility";
 import type { ClipboardEntry } from "../types";
 
@@ -15,7 +14,6 @@ interface UseKeyboardNavigationOptions {
   setIsKeyboardMode: (val: boolean | ((prev: boolean) => boolean)) => void;
   showSettings: boolean;
   arrowKeySelection: boolean;
-  richPasteHotkey: string;
   searchInputRef: RefObject<HTMLInputElement | null>;
   copyToClipboard: (id: number, content: string, contentType: string, pasteWithFormat?: boolean) => Promise<void>;
   setSearch: (val: string) => void;
@@ -29,7 +27,6 @@ export const useKeyboardNavigation = ({
   setIsKeyboardMode,
   showSettings,
   arrowKeySelection,
-  richPasteHotkey,
   searchInputRef,
   copyToClipboard,
   setSearch
@@ -42,7 +39,6 @@ export const useKeyboardNavigation = ({
   // Arrow key selection setting removed: always enabled.
   const arrowKeySelectionRef = useRef(true);
   const copyToClipboardRef = useRef(copyToClipboard);
-  const richPasteHotkeyRef = useRef(richPasteHotkey);
 
   useEffect(() => { filteredHistoryRef.current = filteredHistory; }, [filteredHistory]);
   useEffect(() => { selectedIndexRef.current = selectedIndex; }, [selectedIndex]);
@@ -50,7 +46,6 @@ export const useKeyboardNavigation = ({
   useEffect(() => { showSettingsRef.current = showSettings; }, [showSettings]);
   useEffect(() => { arrowKeySelectionRef.current = true; void arrowKeySelection; }, [arrowKeySelection]);
   useEffect(() => { copyToClipboardRef.current = copyToClipboard; }, [copyToClipboard]);
-  useEffect(() => { richPasteHotkeyRef.current = richPasteHotkey; }, [richPasteHotkey]);
   useEffect(() => {
     invoke("set_navigation_mode", { active: isKeyboardMode }).catch(console.error);
   }, [isKeyboardMode]);
@@ -121,10 +116,9 @@ export const useKeyboardNavigation = ({
         return;
       }
 
-      const matchesRichHotkey = matchesHotkey(e, richPasteHotkeyRef.current);
       const shouldHandleEnter = e.key === "Enter" && isKeyboardModeRef.current;
-      if (shouldHandleEnter || matchesRichHotkey) {
-        const isRich = matchesRichHotkey;
+      if (shouldHandleEnter) {
+        const isRich = false;
         e.preventDefault();
         e.stopPropagation();
 

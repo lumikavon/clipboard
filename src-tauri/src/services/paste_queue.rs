@@ -191,13 +191,8 @@ pub async fn paste_next_step(app_handle: tauri::AppHandle) {
                 }
             }
 
-            // Perform deletion if delete_after_paste is enabled
-            let mut actual_delete = {
-                let settings_state = app_handle.state::<crate::app_state::SettingsState>();
-                settings_state
-                    .delete_after_paste
-                    .load(std::sync::atomic::Ordering::Relaxed)
-            };
+            // Delete-after-paste feature removed: never delete.
+            let mut actual_delete = false;
 
             if actual_delete && id > 0 {
                 if let Ok(Some(entry)) = db_state.repo.get_entry_by_id(id) {

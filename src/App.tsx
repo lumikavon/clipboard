@@ -42,17 +42,15 @@ import { useOverlays } from "./shared/hooks/useOverlays";
 import { useAutoUpdate } from "./shared/hooks/useAutoUpdate";
 import UpdateDialog from "./shared/components/UpdateDialog";
 import type { ClipboardEntry } from "./shared/types";
-import type { QuickPasteHint, VirtualClipboardListHandle } from "./features/clipboard/types";
+import type { VirtualClipboardListHandle } from "./features/clipboard/types";
 import { openSettingsWindow } from "./features/settings/lib/settingsWindow";
 
-import type { QuickPasteModifier } from "./features/app/types";
 import {
   forceHideCompactPreviewWindow,
   isCompactPreviewWindowSupported,
   isCompactPreviewWarmupSupported,
   warmupCompactPreviewWindow
 } from "./features/clipboard/lib/compactPreviewControls";
-import { isMacPlatform } from "./shared/lib/platform";
 import { isTauriRuntime } from "./shared/lib/tauriRuntime";
 
 const insertHistoryItem = (list: ClipboardEntry[], item: ClipboardEntry) => {
@@ -84,40 +82,6 @@ const insertHistoryItem = (list: ClipboardEntry[], item: ClipboardEntry) => {
 
   next.splice(insertIndex, 0, item);
   return next;
-};
-
-const QUICK_PASTE_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"] as const;
-
-const buildQuickPasteHintsById = (
-  items: ClipboardEntry[],
-  quickPasteModifier: QuickPasteModifier
-): Record<number, QuickPasteHint> => {
-  if (quickPasteModifier === "disabled") {
-    return {};
-  }
-
-  const modifierLabels: Record<Exclude<QuickPasteModifier, "disabled">, string> = isMacPlatform()
-    ? {
-        ctrl: "⌃",
-        alt: "⌥",
-        shift: "⇧",
-        win: "⌘"
-      }
-    : {
-        ctrl: "Ctrl+",
-        alt: "Alt+",
-        shift: "Shift+",
-        win: "Win+"
-      };
-  const pinnedItems = items.filter((item) => item.is_pinned).slice(0, QUICK_PASTE_KEYS.length);
-
-  return pinnedItems.reduce<Record<number, QuickPasteHint>>((acc, item, index) => {
-    acc[item.id] = {
-      slot: index + 1,
-      combo: `${modifierLabels[quickPasteModifier]}${QUICK_PASTE_KEYS[index]}`
-    };
-    return acc;
-  }, {});
 };
 
 const App = () => {
@@ -157,26 +121,8 @@ const App = () => {
     setDataPath,
     hotkey,
     setHotkey,
-    sequentialHotkey,
-    setSequentialHotkey,
-    richPasteHotkey,
-    setRichPasteHotkey,
-    searchHotkey,
-    setSearchHotkey,
-    quickPasteModifier,
-    setQuickPasteModifier,
-    sequentialMode,
-    setSequentialModeState,
     isRecording,
     setIsRecording,
-    isRecordingSequential,
-    setIsRecordingSequential,
-    isRecordingRich,
-    setIsRecordingRich,
-    isRecordingSearch,
-    setIsRecordingSearch,
-    deleteAfterPaste,
-    setDeleteAfterPaste,
     moveToTopAfterPaste,
     setMoveToTopAfterPaste,
     privacyProtection,
@@ -230,11 +176,8 @@ const App = () => {
     setIsWindowPinned,
     showSearchBox,
     setShowSearchBox,
-    scrollTopButtonEnabled,
-    setScrollTopButtonEnabled,
     arrowKeySelection,
     setArrowKeySelection,
-    setHideTrayIcon,
     setHideDockIcon,
     setEdgeDocking,
     customBackground,
@@ -285,9 +228,6 @@ const App = () => {
   const searchInputRef = useInputFocus<HTMLInputElement>();
   const virtualListRef = useRef<VirtualClipboardListHandle | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [quickPasteHintsById, setQuickPasteHintsById] = useState<Record<number, QuickPasteHint>>(
-    {}
-  );
   const PAGE_SIZE = 80;
   const { fetchHistory, loadMoreHistory } = useHistoryFetch({
     debouncedSearch,
@@ -318,7 +258,8 @@ const App = () => {
     appSettings
   });
 
-  const showScrollTopVisible = showScrollTop && scrollTopButtonEnabled;
+  // Scroll-top button setting removed: always enabled.
+  const showScrollTopVisible = showScrollTop;
 
   const handleHeaderBack = useCallback(() => {
     if (effectiveShowEmojiPanel) {
@@ -368,7 +309,7 @@ const App = () => {
 
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
-      if (isRecording || isRecordingSequential || isRecordingRich || isRecordingSearch) return;
+      if (isRecording) return;
       if (!hotkey || hotkey === t('not_set')) return;
 
       const activeEl = document.activeElement as HTMLElement | null;
@@ -392,7 +333,7 @@ const App = () => {
 
     window.addEventListener('keydown', handleKeydown, true);
     return () => window.removeEventListener('keydown', handleKeydown, true);
-  }, [hotkey, isRecording, isRecordingSequential, isRecordingRich, isRecordingSearch, t]);
+  }, [hotkey, isRecording, t]);
 
 
   const { toasts, pushToast, confirmDialog, openConfirm, closeConfirm } = useOverlays();
@@ -439,19 +380,11 @@ const App = () => {
     setPasteMethod,
     setShowSourceAppIcon,
 
-    setDeleteAfterPaste,
     setMoveToTopAfterPaste,
-    setHideTrayIcon,
     setHideDockIcon,
     setEdgeDocking,
     setShowSearchBox,
-    setScrollTopButtonEnabled,
     setArrowKeySelection,
-    setSequentialHotkey,
-    setRichPasteHotkey,
-    setSearchHotkey,
-    setQuickPasteModifier,
-    setSequentialModeState,
     setSoundEnabled,
     setPasteSoundEnabled,
     setSoundVolume,
@@ -569,39 +502,6 @@ const App = () => {
     fetchHistory();
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    const seededHints = buildQuickPasteHintsById(history, quickPasteModifier);
-    setQuickPasteHintsById(seededHints);
-
-    if (quickPasteModifier === "disabled") {
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    invoke<ClipboardEntry[]>("get_clipboard_history", {
-      limit: 256,
-      offset: 0,
-      contentType: null
-    })
-      .then((items) => {
-        if (!cancelled) {
-          setQuickPasteHintsById(buildQuickPasteHintsById(items, quickPasteModifier));
-        }
-      })
-      .catch((error) => {
-        console.error("Failed to refresh quick paste hints:", error);
-        if (!cancelled) {
-          setQuickPasteHintsById(seededHints);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [history, quickPasteModifier]);
-
   useToastListener({ pushToast });
 
   useSettingsPanelReset({ showSettings, setCollapsedGroups, setSettingsSubpage });
@@ -648,28 +548,12 @@ const App = () => {
   const {
     checkHotkeyConflict,
     updateHotkey,
-    updateSequentialHotkey,
-    updateRichPasteHotkey,
-    updateSearchHotkey
   } =
     useHotkeyConfig({
       hotkey,
       setHotkey,
-      sequentialHotkey,
-      setSequentialHotkey,
-      richPasteHotkey,
-      setRichPasteHotkey,
-      searchHotkey,
-      setSearchHotkey,
-      sequentialMode,
       isRecording,
       setIsRecording,
-      isRecordingSequential,
-      setIsRecordingSequential,
-      isRecordingRich,
-      setIsRecordingRich,
-      isRecordingSearch,
-      setIsRecordingSearch,
       saveAppSetting,
       t,
       pushToast
@@ -681,7 +565,6 @@ const App = () => {
     useClipboardActions({
       t,
       pushToast,
-      deleteAfterPaste,
       moveToTopAfterPaste,
       setSearch,
       setHistory
@@ -740,7 +623,6 @@ const App = () => {
     setIsKeyboardMode,
     showSettings,
     arrowKeySelection,
-    richPasteHotkey,
     searchInputRef,
     copyToClipboard,
     setSearch
@@ -762,7 +644,7 @@ const App = () => {
     sensitiveMaskPrefixVisible,
     sensitiveMaskSuffixVisible,
     sensitiveMaskEmailDomain,
-    quickPasteHintsById,
+    quickPasteHintsById: {},
     copyToClipboard,
     setSelectedIndex,
     setRevealedIds,
@@ -779,9 +661,6 @@ const App = () => {
     hotkeyParts,
     checkHotkeyConflict,
     updateHotkey,
-    updateSequentialHotkey,
-    updateRichPasteHotkey,
-    updateSearchHotkey,
     saveAppSetting,
     saveSetting,
     handleResetSettings,

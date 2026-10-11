@@ -21,56 +21,6 @@ use crate::infrastructure::windows_ext::WindowExt;
 // Store registered hotkey IDs for cleanup
 static BLOCKED_HOTKEY_IDS: std::sync::Mutex<Vec<i32>> = std::sync::Mutex::new(Vec::new());
 
-#[cfg(target_os = "windows")]
-fn quick_paste_index_from_vk(vk: u32) -> Option<usize> {
-    match vk {
-        0x31 | 0x61 => Some(0),
-        0x32 | 0x62 => Some(1),
-        0x33 | 0x63 => Some(2),
-        0x34 | 0x64 => Some(3),
-        0x35 | 0x65 => Some(4),
-        0x36 | 0x66 => Some(5),
-        0x37 | 0x67 => Some(6),
-        0x38 | 0x68 => Some(7),
-        0x39 | 0x69 => Some(8),
-        0x30 | 0x60 => Some(9),
-        _ => None,
-    }
-}
-
-#[cfg(target_os = "windows")]
-fn quick_paste_modifier_from_settings() -> String {
-    if let Some(handle) = GLOBAL_APP_HANDLE.get() {
-        let settings = handle.state::<SettingsState>();
-        return settings
-            .quick_paste_modifier
-            .lock()
-            .unwrap()
-            .clone()
-            .to_ascii_lowercase();
-    }
-
-    "disabled".to_string()
-}
-
-#[cfg(target_os = "windows")]
-fn quick_paste_modifier_active(
-    modifier: &str,
-    ctrl_down: bool,
-    alt_down: bool,
-    shift_down: bool,
-    win_down: bool,
-) -> bool {
-    match modifier {
-        "disabled" => false,
-        "ctrl" => ctrl_down && !alt_down && !shift_down && !win_down,
-        "alt" => alt_down && !ctrl_down && !shift_down && !win_down,
-        "shift" => shift_down && !ctrl_down && !alt_down && !win_down,
-        "win" => win_down && !ctrl_down && !alt_down && !shift_down,
-        _ => ctrl_down && !alt_down && !shift_down && !win_down,
-    }
-}
-
 #[tauri::command]
 pub fn set_recording_mode(app_handle: AppHandle, enabled: bool) -> Result<(), String> {
     IS_RECORDING.store(enabled, Ordering::SeqCst);
@@ -256,71 +206,7 @@ pub unsafe extern "system" fn keyboard_proc(
         }
 
         // 4. Quick Paste by Modifier+Number
-        {
-            let ctrl_down = (GetAsyncKeyState(VK_CONTROL.0 as i32) as u16 & 0x8000) != 0;
-            let alt_down = (GetAsyncKeyState(VK_MENU.0 as i32) as u16 & 0x8000) != 0;
-            let shift_down = (GetAsyncKeyState(VK_SHIFT.0 as i32) as u16 & 0x8000) != 0;
-            let win_down = (GetAsyncKeyState(VK_LWIN.0 as i32) as u16 & 0x8000 != 0)
-                || (GetAsyncKeyState(VK_RWIN.0 as i32) as u16 & 0x8000 != 0);
-            let quick_paste_modifier = quick_paste_modifier_from_settings();
-
-            if is_up
-                && matches!(
-                    vk,
-                    0x11 | 0xA2 | 0xA3 | 0x12 | 0xA4 | 0xA5 | 0x10 | 0xA0 | 0xA1 | 0x5B | 0x5C
-                )
-            {
-                QUICK_PASTE_DIGIT_MASK.store(0, Ordering::SeqCst);
-            }
-
-            if let Some(index) = quick_paste_index_from_vk(vk) {
-                let bit = 1u32 << index;
-
-                if is_up {
-                    let pressed_mask = QUICK_PASTE_DIGIT_MASK.fetch_and(!bit, Ordering::SeqCst);
-                    if pressed_mask & bit != 0 {
-                        return LRESULT(1);
-                    }
-                }
-
-                if is_down
-                    && quick_paste_modifier_active(
-                        &quick_paste_modifier,
-                        ctrl_down,
-                        alt_down,
-                        shift_down,
-                        win_down,
-                    )
-                {
-                    let pressed_mask = QUICK_PASTE_DIGIT_MASK.fetch_or(bit, Ordering::SeqCst);
-                    if pressed_mask & bit != 0 {
-                        return LRESULT(1);
-                    }
-
-                    if let Some(handle) = GLOBAL_APP_HANDLE.get() {
-                        let handle_clone = handle.clone();
-                        tauri::async_runtime::spawn(async move {
-                            if let Err(err) =
-                                crate::services::clipboard_ops::paste_history_item_by_index(
-                                    handle_clone,
-                                    index,
-                                )
-                                .await
-                            {
-                                eprintln!(
-                                    "[ERROR] Quick paste by {}+{} failed: {}",
-                                    quick_paste_modifier,
-                                    index + 1,
-                                    err
-                                );
-                            }
-                        });
-                    }
-
-                    return LRESULT(1);
-                }
-            }
-        }
+        // 4. Quick Paste by Modifier+Number removed: feature deleted.
 
         // 5. Global Navigation Keys (Up/Down, Enter, Esc)
         if NAVIGATION_ENABLED.load(Ordering::SeqCst) && !IS_RECORDING.load(Ordering::SeqCst) {

@@ -16,6 +16,7 @@ import ToastContainer from "../../../shared/components/ToastContainer";
 import ConfirmDialog from "../../../shared/components/ConfirmDialog";
 import ContextMenu from "../../../shared/components/ContextMenu";
 import { useContextMenu } from "../../../shared/hooks/useContextMenu";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 /**
  * Independent settings window root (`index.html?window=settings`).
@@ -37,21 +38,8 @@ const SettingsWindow = () => {
         settingsLoaded,
         clipboardItemFontSize,
         hotkey,
-        sequentialHotkey,
-        setSequentialHotkey,
-        richPasteHotkey,
-        setRichPasteHotkey,
-        searchHotkey,
-        setSearchHotkey,
-        sequentialMode,
         isRecording,
         setIsRecording,
-        isRecordingSequential,
-        setIsRecordingSequential,
-        isRecordingRich,
-        setIsRecordingRich,
-        isRecordingSearch,
-        setIsRecordingSearch,
         customBackground,
         setCustomBackground,
         customBackgroundOpacity,
@@ -123,19 +111,11 @@ const SettingsWindow = () => {
         setRegistryWinVEnabled: appState.setRegistryWinVEnabled,
         setPasteMethod: appState.setPasteMethod,
         setShowSourceAppIcon: appState.setShowSourceAppIcon,
-        setDeleteAfterPaste: appState.setDeleteAfterPaste,
         setMoveToTopAfterPaste: appState.setMoveToTopAfterPaste,
-        setHideTrayIcon: appState.setHideTrayIcon,
         setHideDockIcon: appState.setHideDockIcon,
         setEdgeDocking: appState.setEdgeDocking,
         setShowSearchBox: appState.setShowSearchBox,
-        setScrollTopButtonEnabled: appState.setScrollTopButtonEnabled,
         setArrowKeySelection: appState.setArrowKeySelection,
-        setSequentialHotkey,
-        setRichPasteHotkey,
-        setSearchHotkey,
-        setQuickPasteModifier: appState.setQuickPasteModifier,
-        setSequentialModeState: appState.setSequentialModeState,
         setSoundEnabled: appState.setSoundEnabled,
         setPasteSoundEnabled: appState.setPasteSoundEnabled,
         setSoundVolume: appState.setSoundVolume,
@@ -185,25 +165,12 @@ const SettingsWindow = () => {
         invoke("save_setting", { key, value: val }).catch(console.error);
     }, []);
 
-    const { checkHotkeyConflict, updateHotkey, updateSequentialHotkey, updateRichPasteHotkey, updateSearchHotkey } =
+    const { checkHotkeyConflict, updateHotkey } =
         useHotkeyConfig({
             hotkey,
             setHotkey,
-            sequentialHotkey,
-            setSequentialHotkey,
-            richPasteHotkey,
-            setRichPasteHotkey,
-            searchHotkey,
-            setSearchHotkey,
-            sequentialMode,
             isRecording,
             setIsRecording,
-            isRecordingSequential,
-            setIsRecordingSequential,
-            isRecordingRich,
-            setIsRecordingRich,
-            isRecordingSearch,
-            setIsRecordingSearch,
             saveAppSetting,
             t,
             pushToast
@@ -224,6 +191,38 @@ const SettingsWindow = () => {
     // resets the flag when settings closes.
     useEffect(() => {
         invoke("set_ignore_blur", { ignore: true }).catch(() => {});
+        let geometryTimer: number | null = null;
+        let persistPending = false;
+        const SETTINGS_GEOMETRY_KEY = "app.settings_window_geometry";
+        const queueGeometryPersist = () => {
+            if (persistPending || geometryTimer !== null) return;
+            persistPending = true;
+            geometryTimer = window.setTimeout(async () => {
+                geometryTimer = null;
+                persistPending = false;
+                try {
+                    const current = getCurrentWindow();
+                    const [position, size, scaleFactor] = await Promise.all([
+                        current.outerPosition().catch(() => null),
+                        current.outerSize().catch(() => null),
+                        current.scaleFactor().catch(() => 1)
+                    ]);
+                    if (!position || !size) return;
+                    const scale = scaleFactor || 1;
+                    const payload = JSON.stringify({
+                        x: Math.round(position.x / scale),
+                        y: Math.round(position.y / scale),
+                        width: Math.round(size.width / scale),
+                        height: Math.round(size.height / scale)
+                    });
+                    await invoke("save_setting", { key: SETTINGS_GEOMETRY_KEY, value: payload });
+                } catch {
+                    // Ignore: geometry persistence is best-effort.
+                }
+            }, 400);
+        };
+        const notifyMove = getCurrentWindow().onMoved(() => queueGeometryPersist()).catch(() => undefined);
+        const notifyResize = getCurrentWindow().onResized(() => queueGeometryPersist()).catch(() => undefined);
         const handleBeforeUnload = () => {
             // Fire-and-forget: page is being torn down.
             try {
@@ -231,10 +230,39 @@ const SettingsWindow = () => {
             } catch {
                 // Ignore teardown errors.
             }
+            // Best-effort: flush the latest geometry so a move/resize made
+            // just before closing is not lost to the 400ms debounce above.
+            try {
+                const current = getCurrentWindow();
+                void Promise.all([
+                    current.outerPosition().catch(() => null),
+                    current.outerSize().catch(() => null),
+                    current.scaleFactor().catch(() => 1)
+                ]).then(([position, size, scaleFactor]) => {
+                    if (!position || !size) return;
+                    const scale = scaleFactor || 1;
+                    const payload = JSON.stringify({
+                        x: Math.round(position.x / scale),
+                        y: Math.round(position.y / scale),
+                        width: Math.round(size.width / scale),
+                        height: Math.round(size.height / scale)
+                    });
+                    void invoke("save_setting", { key: SETTINGS_GEOMETRY_KEY, value: payload }).catch(() => {});
+                }).catch(() => {});
+            } catch {
+                // Ignore teardown errors.
+            }
         };
         window.addEventListener("beforeunload", handleBeforeUnload);
         return () => {
             window.removeEventListener("beforeunload", handleBeforeUnload);
+            if (geometryTimer !== null) {
+                window.clearTimeout(geometryTimer);
+                geometryTimer = null;
+            }
+            persistPending = false;
+            notifyMove.then((off) => off?.()).catch(() => {});
+            notifyResize.then((off) => off?.()).catch(() => {});
             invoke("set_ignore_blur", { ignore: false }).catch(() => {});
         };
     }, []);
@@ -269,9 +297,6 @@ const SettingsWindow = () => {
         hotkeyParts,
         checkHotkeyConflict,
         updateHotkey,
-        updateSequentialHotkey,
-        updateRichPasteHotkey,
-        updateSearchHotkey,
         saveAppSetting,
         saveSetting,
         handleResetSettings,

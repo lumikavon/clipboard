@@ -5,7 +5,6 @@ import type {
   AppState,
   DefaultAppsMap,
   InstalledAppOption,
-  QuickPasteModifier,
   SettingsSubpage
 } from "../types";
 import type { AppCleanupPolicy } from "../../settings/types";
@@ -38,18 +37,8 @@ export const useAppState = (): AppState => {
   const [showAppSelector, setShowAppSelector] = useState<string | null>(null);
   const [installedApps, setInstalledApps] = useState<InstalledAppOption[]>([]);
   const [dataPath, setDataPath] = useState<string>("");
-  const [hotkey, setHotkey] = useState<string>("Alt+C");
-  const [sequentialHotkey, setSequentialHotkey] = useState<string>("Alt+V");
-  const [richPasteHotkey, setRichPasteHotkey] = useState<string>("Alt+Shift+V");
-  const [searchHotkey, setSearchHotkey] = useState<string>("Alt+F");
-  const [quickPasteModifier, setQuickPasteModifier] =
-    useState<QuickPasteModifier>("disabled");
-  const [sequentialMode, setSequentialModeState] = useState(false);
+  const [hotkey, setHotkey] = useState<string>("Ctrl+Shift+V");
   const [isRecording, setIsRecording] = useState(false);
-  const [isRecordingSequential, setIsRecordingSequential] = useState(false);
-  const [isRecordingRich, setIsRecordingRich] = useState(false);
-  const [isRecordingSearch, setIsRecordingSearch] = useState(false);
-  const [deleteAfterPaste, setDeleteAfterPaste] = useState(false);
   const [moveToTopAfterPaste, setMoveToTopAfterPaste] = useState(true);
   const [privacyProtection, setPrivacyProtection] = useState(true);
   const [privacyProtectionKinds, setPrivacyProtectionKinds] = useState<string[]>([
@@ -65,7 +54,7 @@ export const useAppState = (): AppState => {
   const [cleanupRules, setCleanupRules] = useState<string>("");
   const [appCleanupPolicies, setAppCleanupPolicies] = useState<AppCleanupPolicy[]>([]);
   const [captureFiles, setCaptureFiles] = useState(true);
-  const [captureRichText, setCaptureRichText] = useState(false);
+  const [captureRichText, setCaptureRichText] = useState(true);
   const [richTextSnapshotPreview, setRichTextSnapshotPreview] = useState(true);
   const [silentStart, setSilentStart] = useState(true);
   const [followMouse, setFollowMouse] = useState(false);
@@ -87,9 +76,7 @@ export const useAppState = (): AppState => {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [isWindowPinned, setIsWindowPinned] = useState(false);
   const [showSearchBox, setShowSearchBox] = useState(true);
-  const [scrollTopButtonEnabled, setScrollTopButtonEnabled] = useState(true);
   const [arrowKeySelection, setArrowKeySelection] = useState(true);
-  const [hideTrayIcon, setHideTrayIcon] = useState(false);
   const [hideDockIcon, setHideDockIcon] = useState(false);
   const [edgeDocking, setEdgeDocking] = useState(false);
   const [customBackground, setCustomBackground] = useState<string>("");
@@ -148,26 +135,8 @@ export const useAppState = (): AppState => {
     setDataPath,
     hotkey,
     setHotkey,
-    sequentialHotkey,
-    setSequentialHotkey,
-    richPasteHotkey,
-    setRichPasteHotkey,
-    searchHotkey,
-    setSearchHotkey,
-    quickPasteModifier,
-    setQuickPasteModifier,
-    sequentialMode,
-    setSequentialModeState,
     isRecording,
     setIsRecording,
-    isRecordingSequential,
-    setIsRecordingSequential,
-    isRecordingRich,
-    setIsRecordingRich,
-    isRecordingSearch,
-    setIsRecordingSearch,
-    deleteAfterPaste,
-    setDeleteAfterPaste,
     moveToTopAfterPaste,
     setMoveToTopAfterPaste,
     privacyProtection,
@@ -231,12 +200,8 @@ export const useAppState = (): AppState => {
     setIsWindowPinned,
     showSearchBox,
     setShowSearchBox,
-    scrollTopButtonEnabled,
-    setScrollTopButtonEnabled,
     arrowKeySelection,
     setArrowKeySelection,
-    hideTrayIcon,
-    setHideTrayIcon,
     hideDockIcon,
     setHideDockIcon,
     edgeDocking,

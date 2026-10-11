@@ -572,8 +572,9 @@ impl PipelineStage for DistributionStage {
             }
         }
 
-        // Sequential Queue updates
-        if settings.sequential_mode.load(Ordering::Relaxed) {
+        // Sequential paste mode removed: queue updates disabled.
+        if false {
+            let _ = &settings.sequential_mode;
             let queue_state = ctx.app_handle.state::<PasteQueue>();
             let mut queue = queue_state.0.lock().unwrap();
             if queue.last_action_was_paste {

@@ -6,7 +6,6 @@ export type StateSetter<T> = Dispatch<SetStateAction<T>>;
 
 export type InstalledAppOption = { label: string; value: string };
 export type DefaultAppsMap = Record<string, string>;
-export type QuickPasteModifier = "disabled" | "ctrl" | "alt" | "shift" | "win";
 export type SettingsSubpage = "home" | "advanced" | "theme-store";
 
 export interface AppState {
@@ -52,26 +51,8 @@ export interface AppState {
   setDataPath: StateSetter<string>;
   hotkey: string;
   setHotkey: StateSetter<string>;
-  sequentialHotkey: string;
-  setSequentialHotkey: StateSetter<string>;
-  richPasteHotkey: string;
-  setRichPasteHotkey: StateSetter<string>;
-  searchHotkey: string;
-  setSearchHotkey: StateSetter<string>;
-  quickPasteModifier: QuickPasteModifier;
-  setQuickPasteModifier: StateSetter<QuickPasteModifier>;
-  sequentialMode: boolean;
-  setSequentialModeState: StateSetter<boolean>;
   isRecording: boolean;
   setIsRecording: StateSetter<boolean>;
-  isRecordingSequential: boolean;
-  setIsRecordingSequential: StateSetter<boolean>;
-  isRecordingRich: boolean;
-  setIsRecordingRich: StateSetter<boolean>;
-  isRecordingSearch: boolean;
-  setIsRecordingSearch: StateSetter<boolean>;
-  deleteAfterPaste: boolean;
-  setDeleteAfterPaste: StateSetter<boolean>;
   moveToTopAfterPaste: boolean;
   setMoveToTopAfterPaste: StateSetter<boolean>;
   privacyProtection: boolean;
@@ -135,12 +116,8 @@ export interface AppState {
   setIsWindowPinned: StateSetter<boolean>;
   showSearchBox: boolean;
   setShowSearchBox: StateSetter<boolean>;
-  scrollTopButtonEnabled: boolean;
-  setScrollTopButtonEnabled: StateSetter<boolean>;
   arrowKeySelection: boolean;
   setArrowKeySelection: StateSetter<boolean>;
-  hideTrayIcon: boolean;
-  setHideTrayIcon: StateSetter<boolean>;
   hideDockIcon: boolean;
   setHideDockIcon: StateSetter<boolean>;
   edgeDocking: boolean;

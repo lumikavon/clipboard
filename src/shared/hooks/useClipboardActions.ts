@@ -7,7 +7,6 @@ import type { ClipboardEntry } from "../types";
 interface UseClipboardActionsOptions {
   t: (key: string) => string;
   pushToast: (msg: string, duration?: number) => number;
-  deleteAfterPaste: boolean;
   moveToTopAfterPaste: boolean;
   setSearch: (val: string) => void;
   setHistory: Dispatch<SetStateAction<ClipboardEntry[]>>;
@@ -16,7 +15,6 @@ interface UseClipboardActionsOptions {
 export const useClipboardActions = ({
   t,
   pushToast,
-  deleteAfterPaste,
   moveToTopAfterPaste,
   setSearch,
   setHistory
@@ -33,12 +31,12 @@ export const useClipboardActions = ({
           contentType,
           paste: true,
           id: id,
-          deleteAfterUse: deleteAfterPaste,
+          deleteAfterUse: false,
           pasteWithFormat,
           moveToTop: moveToTopAfterPaste
         });
 
-        if (moveToTopAfterPaste && !deleteAfterPaste) {
+        if (moveToTopAfterPaste) {
           const now = Date.now();
           setHistory((prev) =>
             prev.map((item) =>
@@ -53,7 +51,7 @@ export const useClipboardActions = ({
         pushToast(errorMsg, 3000);
       }
     },
-    [deleteAfterPaste, moveToTopAfterPaste, pushToast, setHistory, setSearch, t]
+    [moveToTopAfterPaste, pushToast, setHistory, setSearch, t]
   );
 
   const openContent = useCallback(
