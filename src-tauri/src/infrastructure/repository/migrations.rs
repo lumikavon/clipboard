@@ -207,6 +207,15 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         conn.execute("INSERT INTO schema_migrations (version) VALUES (10)", [])?;
     }
 
+    // Migration 11: Switch default theme from mica to forest
+    if current_version < 11 {
+        conn.execute(
+            "UPDATE settings SET value = 'forest' WHERE key = 'app.theme' AND value = 'mica'",
+            [],
+        )?;
+        conn.execute("INSERT INTO schema_migrations (version) VALUES (11)", [])?;
+    }
+
     Ok(())
 }
 

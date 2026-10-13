@@ -3,14 +3,6 @@
   "productName": "Clipboard",
   "version": "0.0.1",
   "identifier": "com.clipboard",
-  "plugins": {
-    "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE0MDY1QzlGQkU0ODcwMjMKUldRamNFaStuMXdHcEtFWlNINnVJcVgxa2tRb0wrRlBjdzRmZ3Z1WGJxZ1V3R0w5ZmNUemtvRjMK",
-      "endpoints": [
-        "https://tiez.name666.top/api/v1/latest-version?platform={{target}}"
-      ]
-    }
-  },
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -133,9 +125,7 @@
                 }
               ]
             },
-            "window-state:default",
-            "updater:default",
-            "process:allow-restart"
+            "window-state:default"
           ]
         }
       ]
@@ -143,7 +133,6 @@
   },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

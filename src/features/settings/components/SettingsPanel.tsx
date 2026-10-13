@@ -70,7 +70,6 @@ const SettingsPanel = (props: SettingsPanelProps) => {
     } = props;
 
     const [appVersion, setAppVersion] = useState("");
-    const [updateStatus, setUpdateStatus] = useState<string>("");
     const [openHints, setOpenHints] = useState<Set<string>>(new Set());
     const [privacyKindsOpen, setPrivacyKindsOpen] = useState(false);
     const [privacyRulesOpen, setPrivacyRulesOpen] = useState(false);
@@ -189,8 +188,6 @@ const SettingsPanel = (props: SettingsPanelProps) => {
             <SettingsFooter
                 t={t}
                 appVersion={appVersion}
-                updateStatus={updateStatus}
-                setUpdateStatus={setUpdateStatus}
                 onResetSettings={handleResetSettings}
             />
         </motion.div>

@@ -39,8 +39,6 @@ import { useSearchFetchTrigger } from "./shared/hooks/useSearchFetchTrigger";
 import { useScrollToSelection } from "./shared/hooks/useScrollToSelection";
 import { useClipboardItemRenderer } from "./shared/hooks/useClipboardItemRenderer";
 import { useOverlays } from "./shared/hooks/useOverlays";
-import { useAutoUpdate } from "./shared/hooks/useAutoUpdate";
-import UpdateDialog from "./shared/components/UpdateDialog";
 import type { ClipboardEntry } from "./shared/types";
 import type { VirtualClipboardListHandle } from "./features/clipboard/types";
 import { openSettingsWindow } from "./features/settings/lib/settingsWindow";
@@ -206,19 +204,6 @@ const App = () => {
     setTypeFilter
 
   } = appState;
-
-  // --- Auto Update Logic ---
-  const {
-    isOpen: isUpdateOpen,
-    status: updateStatus,
-    version: updateVersion,
-    notes: updateNotes,
-    downloadProgress: updateProgress,
-    onStartDownload,
-    onApplyUpdate,
-    onClose: closeUpdateDialog,
-  } = useAutoUpdate();
-  // -------------------------
 
   // Emoji toggle removed: panel availability no longer gated.
   void emojiPanelEnabled;
@@ -751,16 +736,6 @@ const App = () => {
         cancelLabel={t('cancel')}
         onClose={closeConfirm}
         onConfirm={confirmDialog.onConfirm}
-      />
-
-      <UpdateDialog
-        isOpen={isUpdateOpen}
-        version={updateVersion}
-        notes={updateNotes}
-        downloadProgress={updateProgress}
-        status={updateStatus}
-        onUpdate={updateStatus === "ready" ? onApplyUpdate : onStartDownload}
-        onClose={closeUpdateDialog}
       />
     </div >
   );

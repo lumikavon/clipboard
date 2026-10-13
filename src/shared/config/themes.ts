@@ -14,6 +14,16 @@ export const isStoreTheme = (themeId: string): boolean =>
 
 export const THEMES: ThemeDefinition[] = [
   {
+    id: "forest",
+    labels: {
+      zh: "森林",
+      en: "Forest",
+      tw: "森林"
+    },
+    supportsCustomBackground: true,
+    supportsSurfaceOpacity: true
+  },
+  {
     id: "retro",
     labels: {
       zh: "3D复古",
@@ -69,7 +79,7 @@ export const THEMES: ThemeDefinition[] = [
   }
 ];
 
-export const DEFAULT_THEME = "mica";
+export const DEFAULT_THEME = "forest";
 
 const THEME_BY_ID = new Map(THEMES.map((theme) => [theme.id, theme]));
 
