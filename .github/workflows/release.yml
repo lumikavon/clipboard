@@ -4,67 +4,149 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch: # 添加这一行，启用手动触发
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
-  publish-tauri:
-    permissions:
-      contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: 'windows-latest' 
-            args: ''
-
-    runs-on: ${{ matrix.platform }}
+  release-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
 
       - name: setup node
         uses: actions/setup-node@v5
         with:
-          node-version: lts/*
+          node-version: 20
+          cache: npm
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: install frontend dependencies
+        run: npm ci
+
+      - name: check tag matches package version
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          if ("v$version" -ne "${{ github.ref_name }}") {
+            throw "Tag ${{ github.ref_name }} does not match package.json version v$version"
+          }
+
+      - name: build tauri app (nsis)
+        run: npx tauri build --bundles nsis
+
+      - name: build portable zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path portable | Out-Null
+          Copy-Item src-tauri/target/release/clipboard-app.exe portable/Clipboard.exe
+          Compress-Archive -Path portable/Clipboard.exe -DestinationPath "Clipboard_${{ github.ref_name }}_x64_portable.zip" -Force
+
+      - name: create release if missing
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" \
+              --title "Clipboard $TAG" \
+              --notes "Clipboard $TAG — forest theme by default, local-first, no accounts, no cloud." \
+              --latest || \
+            gh release view "$TAG" >/dev/null
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: upload windows assets
+        shell: bash
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            src-tauri/target/release/bundle/nsis/*-setup.exe \
+            "Clipboard_${{ github.ref_name }}_x64_portable.zip" \
+            --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-macos-arm:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: setup node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: install frontend dependencies
+        run: npm ci
+
+      - name: build tauri app (dmg)
+        run: npx tauri build --bundles dmg
+
+      - name: create release if missing
+        run: |
+          TAG="${{ github.ref_name }}"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" \
+              --title "Clipboard $TAG" \
+              --notes "Clipboard $TAG — forest theme by default, local-first, no accounts, no cloud." \
+              --latest || \
+            gh release view "$TAG" >/dev/null
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: upload macos arm assets
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            src-tauri/target/release/bundle/dmg/*.dmg \
+            --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-macos-intel:
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: setup node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-msvc
-
-      - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libnm-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          targets: x86_64-apple-darwin
 
       - name: install frontend dependencies
-        run: npm install
+        run: npm ci
 
-      - uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          tagName: v__VERSION__ 
-          releaseName: "Clipboard v__VERSION__"
-          releaseBody: "建议更新新版本"
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.args }}
+      - name: build tauri app (dmg, intel)
+        run: npx tauri build --bundles dmg --target x86_64-apple-darwin
 
-      - name: build portable bundle
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: powershell
-        run: npm run build:portable
-
-      - name: upload portable bundle
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: powershell
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: create release if missing
         run: |
-          $version = (Get-Content package.json | ConvertFrom-Json).version
-          $portable = 'artifacts/portable/tiez-portable.zip'
-          $assetName = "Clipboard_${version}_x64_portable.zip"
-          gh release upload "v$version" "$portable#$assetName" --repo $env:GITHUB_REPOSITORY --clobber
+          TAG="${{ github.ref_name }}"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" \
+              --title "Clipboard $TAG" \
+              --notes "Clipboard $TAG — forest theme by default, local-first, no accounts, no cloud." \
+              --latest || \
+            gh release view "$TAG" >/dev/null
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: upload macos intel assets
+        run: |
+          ls src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/
+          gh release upload "${{ github.ref_name }}" \
+            src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg \
+            --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
