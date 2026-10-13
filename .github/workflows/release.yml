@@ -68,85 +68,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  release-macos-arm:
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: setup node
-        uses: actions/setup-node@v5
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: install frontend dependencies
-        run: npm ci
-
-      - name: build tauri app (dmg)
-        run: npx tauri build --bundles dmg
-
-      - name: create release if missing
-        run: |
-          TAG="${{ github.ref_name }}"
-          gh release view "$TAG" >/dev/null 2>&1 || \
-            gh release create "$TAG" \
-              --title "Clipboard $TAG" \
-              --notes "Clipboard $TAG — forest theme by default, local-first, no accounts, no cloud." \
-              --latest || \
-            gh release view "$TAG" >/dev/null
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: upload macos arm assets
-        run: |
-          gh release upload "${{ github.ref_name }}" \
-            src-tauri/target/release/bundle/dmg/*.dmg \
-            --clobber
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  release-macos-intel:
-    runs-on: macos-15-intel
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: setup node
-        uses: actions/setup-node@v5
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-apple-darwin
-
-      - name: install frontend dependencies
-        run: npm ci
-
-      - name: build tauri app (dmg, intel)
-        run: npx tauri build --bundles dmg --target x86_64-apple-darwin
-
-      - name: create release if missing
-        run: |
-          TAG="${{ github.ref_name }}"
-          gh release view "$TAG" >/dev/null 2>&1 || \
-            gh release create "$TAG" \
-              --title "Clipboard $TAG" \
-              --notes "Clipboard $TAG — forest theme by default, local-first, no accounts, no cloud." \
-              --latest || \
-            gh release view "$TAG" >/dev/null
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: upload macos intel assets
-        run: |
-          ls src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/
-          gh release upload "${{ github.ref_name }}" \
-            src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg \
-            --clobber
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+# NOTE: macOS jobs are intentionally disabled for now. The Rust backend has
+# Windows-only code without cfg gating (winreg/windows crates, win_clipboard
+# APIs) and fails to compile on macOS runners (see v0.0.2 run). Re-enable
+# these jobs after adding proper #[cfg(target_os)] isolation.
+#   release-macos-arm: (macos-14, dmg)
+#   release-macos-intel: (macos-15-intel, dmg x86_64-apple-darwin)
